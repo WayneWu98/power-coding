@@ -1,6 +1,8 @@
-// @ts-check
 const { defineConfig } = require('eslint-define-config')
+const { globals } = require('./.eslintrc-auto-import.json')
+
 module.exports = defineConfig({
+  globals,
   ignorePatterns: ['**/*.d.ts'],
   root: true,
   env: {
@@ -19,19 +21,21 @@ module.exports = defineConfig({
     }
   },
   extends: [
+    'eslint:recommended',
     'plugin:vue/vue3-recommended',
     'plugin:@typescript-eslint/recommended',
     'prettier',
     'plugin:prettier/recommended'
   ],
   rules: {
-    indent: ['warn', 4],
+    indent: ['off', 2],
     'vue/script-setup-uses-vars': 'error',
     '@typescript-eslint/ban-ts-ignore': 'off',
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/no-var-requires': 'off',
     '@typescript-eslint/no-empty-function': 'off',
+    '@typescript-eslint/no-empty-interface': 'off',
     'vue/custom-event-name-casing': 'off',
     'no-use-before-define': 'off',
     '@typescript-eslint/no-use-before-define': 'off',
@@ -54,8 +58,6 @@ module.exports = defineConfig({
         varsIgnorePattern: '^_'
       }
     ],
-    'space-before-function-paren': 'off',
-
     'vue/attributes-order': 'off',
     'vue/one-component-per-file': 'off',
     'vue/html-closing-bracket-newline': 'off',

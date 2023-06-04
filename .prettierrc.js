@@ -3,10 +3,11 @@ module.exports = {
   semi: false,
   singleQuote: true,
   printWidth: 120,
-  proseWrap: 'never',
-  trailingComma: 'none',
+  proseWrap: "never",
+  trailingComma: "none",
   bracketSameLine: false,
-  htmlWhitespaceSensitivity: 'ignore',
+  htmlWhitespaceSensitivity: "ignore",
   singleAttributePerLine: false,
-  vueIndentScriptAndStyle: false
+  vueIndentScriptAndStyle: false,
+  arrowParens: 'always',
 }
