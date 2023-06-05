@@ -40,6 +40,7 @@ export default defineConfig({
     components({
       resolvers: [AntDesignVueResolver()],
       dts: 'src/components.d.ts',
+      dirs: undefined,
       types: [
         { from: 'ant-design-vue', names: Object.keys(AntdComponents) },
         { from: '@form-create/ant-design-vue', names: ['form-create'] }

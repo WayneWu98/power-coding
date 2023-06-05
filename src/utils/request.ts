@@ -2,7 +2,6 @@ import Axios, { AxiosRequestConfig, Method } from 'axios'
 import BaseModel from '@/model/BaseModel'
 import * as storage from '@/utils/storage'
 import useUserStore from '@/store/user'
-import Response from '@/model/Response'
 
 const request = Axios.create({
   // baseURL: import.meta.env.VITE_APP_BASE_API,
@@ -21,36 +20,63 @@ request.interceptors.request.use((config) => {
 })
 
 request.interceptors.response.use(
-  (res) => res.data?.data ?? {},
+  (res) => res.data ?? {},
   (err) => {
-    const data = err?.response?.data
-    if (data) {
-      const res = Response.from(data)
-      if (res.code === 401) {
-        useUserStore().logout()
-      }
-      throw res
+    const data = err?.response?.data?.meta ?? {}
+    if (data.meta?.code === 401) {
+      useUserStore().logout()
     }
-    throw Response.fromCaused(err)
+    throw err
   }
 )
 
-function createModelRequest(method: Method) {
-  return function <T extends typeof BaseModel>(url: string, config: AxiosRequestConfig = {}, cls: T) {
-    return request({
+export enum DataMethod {
+  POST = 'post',
+  PUT = 'put',
+  PATCH = 'patch'
+}
+
+export const isDataMethod = (method: Method): method is DataMethod => {
+  return [DataMethod.POST, DataMethod.PUT, DataMethod.PATCH].includes(method as DataMethod)
+}
+
+function createModelDataRequest(method: DataMethod) {
+  return function <T extends typeof BaseModel>(url: string, data: any, config: AxiosRequestConfig = {}, cls: T) {
+    return request<any, Response<Object>>({
       url,
       method,
+      data,
       ...config
-    }).then<InstanceType<T>>((data) => cls.from(data))
+    }).then(({ meta, data }) => ({ meta, data: cls.from(data) }))
+  }
+}
+
+export enum ParamsMethod {
+  GET = 'get',
+  DELETE = 'delete'
+}
+
+export const isParamsMethod = (method: Method): method is ParamsMethod => {
+  return [ParamsMethod.GET, ParamsMethod.DELETE].includes(method as ParamsMethod)
+}
+
+function createModelParamsRequest(method: ParamsMethod) {
+  return function <T extends typeof BaseModel>(url: string, params: any, config: AxiosRequestConfig = {}, cls: T) {
+    return request<any, Response<Object>>({
+      url,
+      method,
+      params: config.params,
+      ...config
+    }).then(({ meta, data }) => ({ meta, data: cls.from(data) }))
   }
 }
 
 const requestModel = {
-  get: createModelRequest('get'),
-  post: createModelRequest('post'),
-  put: createModelRequest('put'),
-  delete: createModelRequest('delete'),
-  patch: createModelRequest('patch')
+  get: createModelParamsRequest(ParamsMethod.GET),
+  post: createModelDataRequest(DataMethod.POST),
+  put: createModelDataRequest(DataMethod.PUT),
+  delete: createModelParamsRequest(ParamsMethod.DELETE),
+  patch: createModelDataRequest(DataMethod.PATCH)
 }
 
 export { request, requestModel }

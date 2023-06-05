@@ -5,7 +5,7 @@
 
 import { ClassConstructor } from 'class-transformer'
 import BaseModel from '../BaseModel'
-import { requestModel } from '@/utils/request'
+import { isDataMethod, isParamsMethod, requestModel } from '@/utils/request'
 
 type Action = 'get' | 'create' | 'update' | 'delete'
 
@@ -74,12 +74,25 @@ export function CRUDDeriver<T extends BaseModel>(
     } as const
     for (const action of actions) {
       cls.prototype[action] = function () {
-        return requestModel[action2method[action]](
-          getEndpoint(action, this),
-          // @ts-ignore
-          ['get', 'delete'].includes(action) ? { params: this.query ?? {} } : { data: this },
-          Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel
-        )
+        const method = action2method[action]
+        if (!method) {
+          throw new Error(`Action ${action} not implemented.`)
+        }
+        if (isParamsMethod(method)) {
+          return requestModel[method](
+            getEndpoint(action, this),
+            this.query ?? {},
+            {},
+            Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel
+          )
+        } else if (isDataMethod(method)) {
+          return requestModel[method](
+            getEndpoint(action, this),
+            this,
+            { params: this.query ?? {} },
+            Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel
+          )
+        }
       }
     }
   }

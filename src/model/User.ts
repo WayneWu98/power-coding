@@ -27,7 +27,7 @@ export class User extends BaseModel implements Entity<number> {
   password?: string
 
   static getMyUser() {
-    return requestModel.get('/api/users/me', {}, User)
+    return requestModel.get('/api/users/me', {}, {}, User)
   }
 }
 
