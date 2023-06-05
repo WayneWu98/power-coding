@@ -22,7 +22,7 @@ request.interceptors.request.use((config) => {
 request.interceptors.response.use(
   (res) => res.data ?? {},
   (err) => {
-    const data = err?.response?.data?.meta ?? {}
+    const data = err?.response?.data ?? {}
     if (data.meta?.code === 401) {
       useUserStore().logout()
     }
@@ -65,7 +65,7 @@ function createModelParamsRequest(method: ParamsMethod) {
     return request<any, Response<Object>>({
       url,
       method,
-      params: config.params,
+      params,
       ...config
     }).then(({ meta, data }) => ({ meta, data: cls.from(data) }))
   }

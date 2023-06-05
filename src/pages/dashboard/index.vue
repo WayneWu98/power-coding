@@ -10,7 +10,15 @@
       :properties="['id', 'name', 'email', 'age']"
       :rowSelection="{ selectedRowKeys: state.selectedRowKeys, onChange: (keys) => (state.selectedRowKeys = keys) }"
       @change="getData"
-    />
+    >
+      <template #customFilterDropdown="{ selectedKeys, setSelectedKeys, confirm, clearFilters, column }">
+        <div>
+          <a-input :value="selectedKeys[0]" @change="(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])" />
+          <a-button type="primary" @click="search(selectedKeys, confirm, column)">search</a-button>
+          <a-button @click="clearFilters()">reset</a-button>
+        </div>
+      </template>
+    </model-table>
   </div>
 </template>
 
@@ -25,10 +33,16 @@ const getData = () => {
   state.loading = true
   state.users
     .get()
-    .then((data) => {
+    .then(({ data }) => {
       state.users.merge(data, ['items', 'total'])
     })
     .finally(() => (state.loading = false))
+}
+
+const search = (selectedKeys: any, cconfirm: any, column: any) => {
+  cconfirm()
+  state.users.query.filters = { [column.dataIndex]: selectedKeys[0] }
+  getData()
 }
 
 getData()

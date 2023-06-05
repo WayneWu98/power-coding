@@ -6,8 +6,16 @@ const routes = [
     component: () => import('@/pages/login/index.vue')
   },
   {
-    path: '/dashboard',
-    component: () => import('@/pages/dashboard/index.vue')
+    path: '/',
+    component: () => import('@/pages/index.vue'),
+    redirect: { name: 'dashboard' },
+    children: [
+      {
+        path: '/dashboard',
+        name: 'dashboard',
+        component: () => import('@/pages/dashboard/index.vue')
+      }
+    ]
   }
 ] as RouteRecordRaw[]
 

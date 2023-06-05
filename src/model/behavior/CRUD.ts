@@ -10,16 +10,16 @@ import { isDataMethod, isParamsMethod, requestModel } from '@/utils/request'
 type Action = 'get' | 'create' | 'update' | 'delete'
 
 export default abstract class CRUD<Get = any, Create = Get, Update = any, Delete = any> {
-  get(): Promise<Get> {
+  get(): Promise<Response<Get>> {
     throw new Error('Method not implemented.')
   }
-  create(): Promise<Create> {
+  create(): Promise<Response<Create>> {
     throw new Error('Method not implemented.')
   }
-  update(): Promise<Update> {
+  update(): Promise<Response<Update>> {
     throw new Error('Method not implemented.')
   }
-  delete(): Promise<Delete> {
+  delete(): Promise<Response<Delete>> {
     throw new Error('Method not implemented.')
   }
 }
@@ -31,7 +31,7 @@ type EndPoint<T extends Object> = string | ((method: Action, model: T) => string
  * it assumes that the design standard of the backend is RESTful-based:
  *
  * - GET `endpoint/:id`: get a specific entity
- * - delete `endpoint`: delete a specific entity
+ * - delete `endpoint/:id`: delete a specific entity
  * - POST `endpoint`: create a new entity
  * - PUT `endpoint/:id`: update a specific entity
  *

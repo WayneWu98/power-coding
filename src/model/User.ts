@@ -15,7 +15,7 @@ import Sorter from './Sorter'
 @Model({})
 @Derive(CRUDDeriver('api/users'))
 export class User extends BaseModel implements Entity<number> {
-  @Field({ name: '用户ID', tableColumn: { align: 'center', sorter: true } })
+  @Field({ name: '用户ID', tableColumn: { align: 'center', sorter: true, customFilterDropdown: true } })
   id: number
   @Field({ name: '用户名', tableColumn: { align: 'center' } })
   name: string
@@ -44,7 +44,9 @@ export class UserAuth extends BaseModel {
   password: string
 
   login() {
-    return request.post<any, { token: string }>('/api/login', this).then((data) => storage.setItem('token', data.token))
+    return request
+      .post<any, Response<{ token: string }>>('/api/login', this)
+      .then(({ data }) => storage.setItem('token', data.token))
   }
 }
 
@@ -54,6 +56,8 @@ export class UsersQuery extends BaseModel {
   pagination: Pagination = Pagination.default()
   @Field({ flatOnSerialize: true, nestOnDeserialize: true })
   sorter: Sorter = Sorter.default()
+  @Field({ flatOnSerialize: true, nestOnDeserialize: true })
+  filters: Record<string, any> = {}
 }
 
 @Model()

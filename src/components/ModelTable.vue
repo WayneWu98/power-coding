@@ -27,14 +27,18 @@
   </a-table>
 </template>
 
-<script setup lang="ts" generic="T extends BaseModelConstructor">
+<script setup lang="ts" generic="T extends BaseModelConstructor, P extends (keyof InstanceType<T>)[]">
 import { BaseModelConstructor } from '@/model/BaseModel'
 import Sorter from '@/model/Sorter'
 import Pagination from '@/model/Pagination'
 import { Table as ATable, TableColumnType, TableProps } from 'ant-design-vue'
+import { FilterConfirmProps } from 'ant-design-vue/lib/table/interface'
+import { Key } from 'ant-design-vue/lib/_util/type'
 
 type Model = T
 type ModelInstance = InstanceType<Model>
+type Properties = P
+type TableColumn = TableColumnType<ModelInstance>
 
 type AcceptedTableProps = Pick<
   TableProps<ModelInstance>,
@@ -62,9 +66,9 @@ type AcceptedTableProps = Pick<
 
 interface Props extends AcceptedTableProps {
   model: Model
-  properties: (keyof ModelInstance)[]
+  properties: Properties
   items?: ModelInstance[]
-  filtered?: keyof ModelInstance
+  filtered?: Properties[number][]
   sorter?: Sorter
   total?: number
   pagination?: Pagination
@@ -83,13 +87,24 @@ const emit = defineEmits<ComponentEvent>()
 
 interface Slot {
   title(props: any): void
-  bodyCell(props: { text?: string; record: ModelInstance; index: number; column: TableColumnType<ModelInstance> }): void
+  bodyCell(props: { text?: string; record: ModelInstance; index: number; column: TableColumn }): void
   emptyText(props: any): void
   expandedRowRender(props: { record: ModelInstance; index: number; indent: number; expanded: boolean }): void
   expandIcon(props: any): void
   footer(props: any): void
-  headerCell(props: { title: string; column: TableColumnType<ModelInstance> }): void
+  headerCell(props: { title: string; column: TableColumn }): void
   summary(props: any): void
+  customFilterDropdown(props: {
+    prefixCls: string
+    setSelectedKeys: (selectedKeys: Key[]) => void
+    selectedKeys: Key[]
+    confirm: (param?: FilterConfirmProps) => void
+    clearFilters: () => void
+    filters?: { text: string; value: string }[]
+    visible: boolean
+    column: TableColumn
+  }): void
+  customFilterIcon(props: { filtered: boolean; column: TableColumn }): void
 }
 const slots = defineSlots<Slot>()
 const slotNames = computed(() => Object.keys(slots) as (keyof Slot)[])
@@ -117,7 +132,7 @@ const columns = computed(() => {
       title: field.name,
       dataIndex: prop as string,
       key: prop as string,
-      filtered: props.filtered === prop,
+      filtered: props.filtered?.includes(prop),
       sortOrder,
       ...column
     }
@@ -128,6 +143,7 @@ const onChange: AcceptedTableProps['onChange'] = (pagination, filters, sorter, e
   if (Array.isArray(sorter)) sorter = sorter[0]
   emit('update:sorter', Sorter.default().merge({ orderBy: sorter.order && sorter.columnKey, order: sorter.order }))
   emit('update:pagination', Pagination.default().merge({ page: pagination.current, per: pagination.pageSize }))
+  console.log('filters', filters)
   emit('change', pagination, filters, sorter, extra)
 }
 </script>
