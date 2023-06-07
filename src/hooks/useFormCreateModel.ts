@@ -13,7 +13,8 @@ export default function useFormCreateModel<T extends BaseModel>(model: MaybeRefO
       return _model.value!
     },
     set(val) {
-      _model.value!.merge(val!)
+      // @ts-ignore
+      _model.value = Reflect.getPrototypeOf(_model.value!).constructor.from(val!)
     }
   })
   return boundedModel
