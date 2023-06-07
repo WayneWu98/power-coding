@@ -104,6 +104,8 @@ class User extends BaseModel {
 @Model()
 class User extends BaseModel implements Entity, Query {
   id: number
+  // query only for serialization as request params
+  @Field({ ignore: { onDeserialize: true } })
   query: Record<string, any>
 }
 ```
