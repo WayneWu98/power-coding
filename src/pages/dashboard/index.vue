@@ -39,8 +39,8 @@ const getData = () => {
     .finally(() => (state.loading = false))
 }
 
-const search = (selectedKeys: any, cconfirm: any, column: any) => {
-  cconfirm()
+const search = (selectedKeys: any, confirm: any, column: any) => {
+  confirm()
   state.users.query.filters = { [column.dataIndex]: selectedKeys[0] }
   getData()
 }

@@ -16,6 +16,7 @@ import {
   plainToInstance
 } from 'class-transformer'
 import * as dayjs from 'dayjs'
+import { TransformConfig } from '@/decorator/Field'
 
 /**
  * transform pure string to Dayjs, or Dayjs to string with forwarded format
@@ -55,5 +56,24 @@ export function typeTransformer(cls: ClassConstructor<unknown>) {
       return plainToInstance(cls, value)
     }
     return value
+  }
+}
+
+const returnSelf = (v: any) => v
+
+export function wrapTransformConfig({
+  onDeserialize = returnSelf,
+  onSerialize = returnSelf,
+  onClone = returnSelf
+}: TransformConfig) {
+  return (params: TransformFnParams) => {
+    const { value, type } = params
+    if (type === TransformationType.CLASS_TO_PLAIN) {
+      return onSerialize(value)
+    }
+    if (type === TransformationType.PLAIN_TO_CLASS) {
+      return onDeserialize(value)
+    }
+    return onClone(value)
   }
 }

@@ -11,6 +11,7 @@ import Validator from '@/decorator/Validator'
 import { Pattern, Required } from '@/utils/validator'
 import * as storage from '@/utils/storage'
 import Sorter from './Sorter'
+import dayjs, { Dayjs } from 'dayjs'
 
 @Model({})
 @Derive(CRUDDeriver('api/users'))
@@ -58,6 +59,18 @@ export class UsersQuery extends BaseModel {
   sorter: Sorter = Sorter.default()
   @Field({ flatOnSerialize: true, nestOnDeserialize: true })
   filters: Record<string, any> = {}
+  @Field({
+    flatOnSerialize: true,
+    transform: {
+      onSerialize(value: [Dayjs, Dayjs]) {
+        return { startDate: value[0].format('YYYY-MM-DD'), endDate: value[1].format('YYYY-MM-DD') }
+      },
+      onDeserialize(value: { startDate: string; endDate: string }) {
+        return [dayjs(value.startDate), dayjs(value.endDate)]
+      }
+    }
+  })
+  dateRange: [Dayjs, Dayjs] = [dayjs(), dayjs()]
 }
 
 @Model()

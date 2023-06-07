@@ -24,19 +24,21 @@ export default abstract class CRUD<Get = any, Create = Get, Update = any, Delete
   }
 }
 
-type EndPoint<T extends Object> = string | ((method: Action, model: T) => string)
+type EndPoint<T extends Object> = string | ((action: Action, model: T) => string)
 
 /**
  * this is a helper function to implement CRUD behavior for a model,
  * it assumes that the design standard of the backend is RESTful-based:
  *
- * - GET `endpoint/:id`: get a specific entity
- * - delete `endpoint/:id`: delete a specific entity
- * - POST `endpoint`: create a new entity
- * - PUT `endpoint/:id`: update a specific entity
+ * - get a specific entity: `GET endpoint/:id`
+ * - delete a specific entity: `endpoint/:id`
+ * - create a new entity: `endpoint`
+ * - update a specific entity `endpoint/:id`
+ *
+ * or model does not implement `Entity` (`id` is not existing), then all methods will use `endpoint` as the endpoint directly.
  *
  * or you can customize the endpoint by passing a function as the first argument,
- * this function receives two arguments: `method` and `model`, and returns a string as the endpoint
+ * this function receives two arguments: `action` and `model`, and returns a string as the endpoint
  *
  * @example
  *

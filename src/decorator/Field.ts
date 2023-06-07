@@ -1,11 +1,15 @@
 import { ClassConstructor, Expose, Transform, TransformFnParams } from 'class-transformer'
 import 'reflect-metadata'
-import { typeTransformer } from '@/utils/transformer'
+import { typeTransformer, wrapTransformConfig } from '@/utils/transformer'
 import { TableColumnType } from 'ant-design-vue'
 
-type ExcludedBuiltInProps = 'sorter' | 'filtered' | 'sortOrder'
-interface TableColumn extends Omit<TableColumnType, ExcludedBuiltInProps> {
-  sorter?: boolean
+type ExcludedBuiltInProps = 'filtered' | 'sortOrder'
+interface TableColumn extends Omit<TableColumnType, ExcludedBuiltInProps> {}
+
+export interface TransformConfig {
+  onDeserialize?: (value: any) => any
+  onSerialize?: (value: any) => any
+  onClone?: (value: any) => any
 }
 
 export interface Field {
@@ -14,7 +18,7 @@ export interface Field {
   description?: string
   type?: any
   tableColumn?: TableColumn
-  transform?: (params: TransformFnParams) => any
+  transform?: ((params: TransformFnParams) => any) | TransformConfig
   /**
    * @property {boolean} onDeserialize ignore current field when deserialization
    * @property {boolean} onSerialize ignore current field when serialization
@@ -74,7 +78,8 @@ export default function (conf: Field = {}) {
     if (!Reflect.has(conf, 'transform')) {
       Transform(typeTransformer(conf.type))(prototype, propertyKey)
     } else {
-      Transform(conf.transform!)(prototype, propertyKey)
+      const transform = conf.transform!
+      Transform(typeof transform === 'function' ? transform : wrapTransformConfig(transform))(prototype, propertyKey)
     }
     if (conf.fieldName) {
       Expose({ name: conf.fieldName })(prototype, propertyKey)

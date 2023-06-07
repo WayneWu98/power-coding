@@ -38,8 +38,13 @@ export default class BaseModel {
   /**
    * mix target and this to be a new instance.
    */
-  mix(target: typeof this) {
-    return Object.assign(this.clone(), target)
+  mix<T extends Object>(target: T, fields = Object.keys(target) as (keyof T)[]) {
+    const cloned = this.clone()
+    for (const field of fields) {
+      // @ts-ignore
+      cloned[field] = target[field]
+    }
+    return cloned
   }
   /**
    * Convert current model to plain object.
@@ -115,13 +120,17 @@ export default class BaseModel {
   static getModel() {
     return getModel(this)
   }
-  static from<T extends typeof BaseModel>(this: T, raw: string | Object): InstanceType<T> {
+  static from<T extends typeof BaseModel>(this: T, raw: string): InstanceType<T>
+  static from<T extends typeof BaseModel>(this: T, raw: Object): InstanceType<T>
+  static from<T extends typeof BaseModel>(this: T, raw: Object[]): InstanceType<T>[]
+  static from<T extends typeof BaseModel>(this: T, raw: string | Object | Object[]): InstanceType<T> | InstanceType<T> {
     if (raw instanceof BaseModel) {
       raw = raw.toPlain()
     } else if (typeof raw === 'string') {
       raw = JSON.parse(raw)
     }
-    return plainToInstance(this, traverseOnDeserialize(raw, this, this)) as InstanceType<T>
+    // @ts-ignore
+    return plainToInstance(this, traverseOnDeserialize(raw, this, this))
   }
 }
 
@@ -159,7 +168,6 @@ function traverseOnSerialize(obj: any, cls: any, superCls: any): any {
     }
     if (field?.transform) {
       transformed[key] = rawValue
-      continue
     } else {
       const _superCls = cls?.prototype instanceof BaseModel ? cls : superCls
       transformed[key] = traverseOnSerialize(rawValue, fields[rawKey]?.type, _superCls)
@@ -216,7 +224,12 @@ function traverseOnDeserialize(obj: any, cls: any, superCls: any): any {
   if (cls) {
     const shouldNestFields = getShouldNestFields(cls)
     for (const k of shouldNestFields) {
-      transformed[k] = transformed
+      transformed[k] = Object.entries(transformed)
+        .filter(([key]) => !shouldNestFields.includes(key))
+        .reduce((map, [key, value]) => {
+          map[key] = value
+          return map
+        }, {} as Record<keyof any, any>)
     }
   }
   return transformed
