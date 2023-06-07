@@ -53,11 +53,11 @@ export class UserAuth extends BaseModel {
 
 @Model()
 export class UsersQuery extends BaseModel {
-  @Field({ flatOnSerialize: true, nestOnDeserialize: true })
+  @Field({ flatOnSerialize: true })
   pagination: Pagination = Pagination.default()
-  @Field({ flatOnSerialize: true, nestOnDeserialize: true })
+  @Field({ flatOnSerialize: true })
   sorter: Sorter = Sorter.default()
-  @Field({ flatOnSerialize: true, nestOnDeserialize: true })
+  @Field({ flatOnSerialize: true })
   filters: Record<string, any> = {}
   @Field({
     flatOnSerialize: true,
@@ -76,7 +76,8 @@ export class UsersQuery extends BaseModel {
 @Model()
 @Derive(CRUDDeriver('api/users', ['get']))
 export class Users extends BaseModel implements Query {
-  @Field({})
+  // query only for serialization as request params
+  @Field({ ignore: { onDeserialize: true } })
   query: UsersQuery = UsersQuery.default()
   @Field({ type: User })
   items: User[] = []
