@@ -112,4 +112,6 @@ class User extends BaseModel implements Entity, Query {
 
 ## 注意
 
-类如Vue、React的前端框架中，MVVM 本就是 Model 与 View 相互对应，但对于后端数据 Entity 来说，我们一般都单独建一个 api 文件夹来进行操作，使用 interface 进行类型约束，而该项目的本质目标就是为了提高 View 和 Entity 的逻辑耦合，以 Model 为中心去连接 View 和 Entity，因此不是所有视图需要的数据模型都需要去单独建一个 Model，如果只是纯粹的视图逻辑，应该尽可能将这些代码放在组件中，交由框架本身去管理，防止矫枉过正。
+1. Field 的 type 一般不需要配置，当 tsconfig.json 中配置了 `emitDecoratorMetadata` 时，tsc 会自动推导变量类型，但要求必须显式对变量进行类型标注，即使设置了默认值。同时如果成员类型为数组，则需要手动配置 type 为数组的元素类型，因为 `emitDecoratorMetadata` 只会自动推导数组类型，不会推导数组元素类型。
+2. 当你配置了 Field 装饰器的 transform 属性时，这意味着你需要手动处理序列化和反序列化的逻辑，且无需再配置 type 属性，因为 type 最后也会转换为一个 transformer，如果你配置了 transform 属性，那么 type 属性会被忽略。
+3. 类如Vue、React的前端框架中，MVVM 本就是 Model 与 View 相互对应，但对于后端数据 Entity 来说，我们一般都单独建一个 api 文件夹来进行操作，使用 interface 进行类型约束，而该项目的本质目标就是为了提高 View 和 Entity 的逻辑耦合，以 Model 为中心去连接 View 和 Entity，因此不是所有视图需要的数据模型都需要去单独建一个 Model，如果只是纯粹的视图逻辑，应该尽可能将这些代码放在组件中，交由框架本身去管理，防止矫枉过正。
