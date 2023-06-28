@@ -17,7 +17,7 @@ interface Options {
 }
 
 const hasClassDeclaration = (ast: SourceFile) =>
-  ast.statements.some(statement => statement.kind === typescript.SyntaxKind.ClassDeclaration)
+  ast.statements.some((statement) => statement.kind === typescript.SyntaxKind.ClassDeclaration)
 
 export default function emitReflectMetadata(options: Options = {}) {
   const tsConfigPath = options.tsconfig ? path.resolve(options.tsconfig) : path.resolve(process.cwd(), 'tsconfig.json')
