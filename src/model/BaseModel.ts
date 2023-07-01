@@ -7,10 +7,11 @@
 
 import { instanceToPlain, plainToInstance } from 'class-transformer'
 import { getModel, Model } from '@/decorator/Model'
-import { getField, getFields, Field, getFieldList, getShouldNestFields } from '@/decorator/Field'
+import { getField, getFields, Field, getShouldNestFields } from '@/decorator/Field'
 import { NamingCase, NAMING_CASE_MAP } from '@/utils/naming-case'
-import { Validator, getFieldValidators } from '@/decorator/Validator'
+import { Validator, getFieldValidators, getAllFieldValidators } from '@/decorator/Validator'
 import { DEFAULT_CLASS_NAMING_CASE } from '@/config'
+import { getMemberFieldList } from '@/utils/metadata'
 
 /**
  * Every model should inherit this class.
@@ -103,10 +104,7 @@ export default class BaseModel {
     return getFieldValidators(this, field)
   }
   static getAllFieldValidators<T extends typeof BaseModel>(this: T) {
-    return getFieldList(this).reduce((map, field) => {
-      map[field] = (this as any).getFieldValidators(field)
-      return map
-    }, {} as Record<keyof InstanceType<T>, Validator[]>)
+    return getAllFieldValidators(this)
   }
   static default<T extends typeof BaseModel>(this: T) {
     return new this() as InstanceType<T>
@@ -224,12 +222,15 @@ function traverseOnDeserialize(obj: any, cls: any, superCls: any): any {
   if (cls) {
     const shouldNestFields = getShouldNestFields(cls)
     for (const k of shouldNestFields) {
-      transformed[k] = Object.entries(transformed)
-        .filter(([key]) => !shouldNestFields.includes(key))
-        .reduce((map, [key, value]) => {
-          map[key] = value
-          return map
-        }, {} as Record<keyof any, any>)
+      // @ts-ignore
+      let shouldCollect = getMemberFieldList(cls, k)
+      if (shouldCollect.length <= 0) {
+        shouldCollect = Object.keys(transformed).filter((key) => !shouldNestFields.includes(key))
+      }
+      transformed[k] = Object.values(shouldCollect).reduce((map, k) => {
+        map[k] = transformed[k]
+        return map
+      }, {} as Record<keyof any, any>)
     }
   }
   return transformed

@@ -2,6 +2,7 @@ import { ClassConstructor, Expose, Transform, TransformFnParams } from 'class-tr
 import 'reflect-metadata'
 import { typeTransformer, wrapTransformConfig } from '@/utils/transformer'
 import { TableColumnType } from 'ant-design-vue'
+import { getClassFieldList } from '@/utils/metadata'
 
 type ExcludedBuiltInProps = 'filtered' | 'sortOrder'
 interface TableColumn extends Omit<TableColumnType, ExcludedBuiltInProps> {}
@@ -35,19 +36,10 @@ export interface Field {
 }
 
 const FIELD_KEY = Symbol('FIELD')
-const FIELDS_KEY = Symbol('FIELDS')
 const SHOULD_NEST_FIELDS_KEY = Symbol('SHOULD_NEST_FIELDS')
 
 export function getShouldNestFields<T extends ClassConstructor<any>>(cls: T): (keyof InstanceType<T>)[] {
   return Reflect.getMetadata(SHOULD_NEST_FIELDS_KEY, cls) || []
-}
-
-export function getFieldList<T extends ClassConstructor<any>>(cls: T): (keyof InstanceType<T>)[] {
-  return Reflect.getMetadata(FIELDS_KEY, cls) || []
-}
-
-function addFieldItem<T extends ClassConstructor<any>>(cls: T, field: keyof InstanceType<T>) {
-  Reflect.defineMetadata(FIELDS_KEY, [...new Set([...getFieldList(cls), field])], cls)
 }
 
 function addShouldNestFieldItem<T extends ClassConstructor<any>>(cls: T, field: keyof InstanceType<T>) {
@@ -55,11 +47,11 @@ function addShouldNestFieldItem<T extends ClassConstructor<any>>(cls: T, field: 
 }
 
 export function getField<T extends ClassConstructor<any>>(cls: T, field: keyof InstanceType<T>): Field {
-  return Reflect.getMetadata(FIELD_KEY, cls.prototype, field as string)
+  return Reflect.getMetadata(FIELD_KEY, cls.prototype, field as string) ?? {}
 }
 
 export function getFields<T extends ClassConstructor<any>>(cls: T): Record<keyof InstanceType<T>, Field> {
-  return getFieldList(cls).reduce((map, field) => {
+  return getClassFieldList(cls).reduce((map, field) => {
     map[field] = getField(cls, field)
     return map
   }, {} as Record<keyof InstanceType<T>, Field>)
@@ -73,7 +65,6 @@ export default function (conf: Field = {}) {
     if (conf.nestOnDeserialize) {
       addShouldNestFieldItem(prototype.constructor as ClassConstructor<any>, propertyKey)
     }
-    addFieldItem(prototype.constructor as ClassConstructor<any>, propertyKey)
     Reflect.defineMetadata(FIELD_KEY, conf, prototype, propertyKey)
     if (!Reflect.has(conf, 'transform')) {
       Transform(typeTransformer(conf.type))(prototype, propertyKey)

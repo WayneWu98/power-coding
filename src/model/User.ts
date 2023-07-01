@@ -81,7 +81,6 @@ export class Users extends BaseModel implements Query {
   query: UsersQuery = UsersQuery.default()
   @Field({ type: User })
   items: User[] = []
-
   @Field()
   total: number = 0
 }

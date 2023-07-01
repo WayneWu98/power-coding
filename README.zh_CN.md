@@ -55,7 +55,7 @@
 
 > 注意
 >
-> flatOnSerialize 和 nestOnDeserialize 是全量复制，不会进行检测有哪些成员才是需要的，因为目前来说，对于单纯只是用 interface 和 type 进行类型标注的情况，很难获取到成员的类型信息，所以只能全量复制，如果需要更精确的控制，可以通过 transform 属性。
+> ~~nestOnDeserialize 是全量复制，不会进行检测有哪些成员才是需要的，因为目前来说，对于单纯只是用 interface 和 type 进行类型标注的情况，很难获取到成员的类型信息，所以只能全量复制，如果需要更精确的控制，可以通过 transform 属性。~~已经手动实现了 class 静态分析，因此 nestOnDeserialize 只会复制需要的字段（但在一些复杂的类型标注中可能会存在问题）。
 
 ## 数据校验
 
