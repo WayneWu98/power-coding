@@ -6,9 +6,10 @@
  */
 
 import path from 'path'
-import typescript, { SourceFile } from 'typescript'
+import ts from 'typescript'
 import { createFilter, FilterPattern } from '@rollup/pluginutils'
 import { Plugin } from 'vite'
+import patch from './patch'
 
 interface Options {
   include?: FilterPattern
@@ -16,13 +17,26 @@ interface Options {
   tsconfig?: string
 }
 
-const hasClassDeclaration = (ast: SourceFile) =>
-  ast.statements.some((statement) => statement.kind === typescript.SyntaxKind.ClassDeclaration)
-
 export default function emitReflectMetadata(options: Options = {}) {
   const tsConfigPath = options.tsconfig ? path.resolve(options.tsconfig) : path.resolve(process.cwd(), 'tsconfig.json')
-  const tsconfig = typescript.readConfigFile(tsConfigPath, typescript.sys.readFile).config ?? {}
-  const compilerOptions = { ...tsconfig.compilerOptions, module: typescript.ModuleKind.ESNext, sourceMap: false }
+  const config = ts.parseJsonConfigFileContent(
+    ts.readConfigFile(tsConfigPath, ts.sys.readFile).config,
+    ts.sys,
+    path.dirname(tsConfigPath)
+  )
+
+  const createProgram = (fileName, old?: ts.Program) => {
+    return ts.createProgram(
+      [fileName],
+      {
+        ...config.options,
+        module: ts.ModuleKind.ESNext,
+        sourceMap: false
+      },
+      undefined,
+      old
+    )
+  }
   const filter = createFilter(options.include, options.exclude)
   return {
     name: 'emit-reflect-metadata',
@@ -31,15 +45,7 @@ export default function emitReflectMetadata(options: Options = {}) {
       if (!filter(id)) {
         return source
       }
-      const ast = typescript.createSourceFile(path.basename(id), source, typescript.ScriptTarget.ESNext, true)
-      if (!hasClassDeclaration(ast)) {
-        return source
-      }
-      const program = typescript.transpileModule(source, { compilerOptions })
-      return {
-        code: program.outputText,
-        map: program.sourceMapText
-      }
+      return patch(id, source, createProgram)
     }
   } as Plugin
 }

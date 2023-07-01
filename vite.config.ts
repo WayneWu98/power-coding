@@ -9,6 +9,7 @@ import components from 'unplugin-vue-components/vite'
 import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers'
 import autoImport from 'unplugin-auto-import/vite'
 import WindiCss from 'vite-plugin-windicss'
+import emitReflectMetadata from './build/plugins/emit-reflect-metadata'
 
 // @ts-ignore
 import * as AntdComponents from './src/components/antd'
@@ -17,6 +18,7 @@ import * as AntdComponents from './src/components/antd'
 export default defineConfig({
   plugins: [
     vue(),
+    emitReflectMetadata({ include: 'src/**/*.ts' }),
     checker({
       overlay: { initialIsOpen: false },
       eslint: {
