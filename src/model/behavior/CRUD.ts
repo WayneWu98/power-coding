@@ -10,18 +10,10 @@ import { isDataMethod, isParamsMethod, requestModel } from '@/utils/request'
 type Action = 'get' | 'create' | 'update' | 'delete'
 
 export default abstract class CRUD<Get = any, Create = Get, Update = any, Delete = any> {
-  get(): Promise<Response<Get>> {
-    throw new Error('Method not implemented.')
-  }
-  create(): Promise<Response<Create>> {
-    throw new Error('Method not implemented.')
-  }
-  update(): Promise<Response<Update>> {
-    throw new Error('Method not implemented.')
-  }
-  delete(): Promise<Response<Delete>> {
-    throw new Error('Method not implemented.')
-  }
+  get: () => Promise<Response<Get>>
+  create: () => Promise<Response<Create>>
+  update: () => Promise<Response<Update>>
+  delete: () => Promise<Response<Delete>>
 }
 
 type EndPoint<T extends Object> = string | ((action: Action, model: T) => string)
@@ -43,7 +35,7 @@ type EndPoint<T extends Object> = string | ((action: Action, model: T) => string
  * @example
  *
  * ```typescript
- * @CRUDDeriver('/users')
+ * @Derive(CRUDDeriver('api/users'))
  * class User extends BaseModel implements Entity {
  *    id: number
  * }
@@ -87,7 +79,8 @@ export function CRUDDeriver<T extends BaseModel>(
             {},
             Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel
           )
-        } else if (isDataMethod(method)) {
+        }
+        if (isDataMethod(method)) {
           return requestModel[method](
             getEndpoint(action, this),
             this,
