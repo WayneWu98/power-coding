@@ -25,7 +25,7 @@ export default function emitReflectMetadata(options: Options = {}) {
     path.dirname(tsConfigPath)
   )
 
-  const createProgram = (fileName, old?: ts.Program) => {
+  const createProgram = (fileName: string, old?: ts.Program) => {
     return ts.createProgram(
       [fileName],
       {

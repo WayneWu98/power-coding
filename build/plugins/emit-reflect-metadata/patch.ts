@@ -10,6 +10,7 @@ const isObjectType = (type: ts.Type): boolean => {
   if (type.isIntersection()) {
     return type.types.some((t) => isObjectType(t))
   }
+  return false
 }
 const isArrayType = (type: ts.Type): boolean => {
   return type.flags === ts.TypeFlags.Object && type.symbol?.name === 'Array'
@@ -28,7 +29,7 @@ const getArrayElement = (type: ts.Type): ts.Type | undefined => {
   // @ts-ignore
   return type.typeArguments?.[0]
 }
-const getPrimitiveType = (type: ts.Type): string => {
+const getPrimitiveType = (type: ts.Type): string | undefined => {
   switch (type.flags) {
     case ts.TypeFlags.String:
     case ts.TypeFlags.StringLike:
@@ -151,9 +152,9 @@ const annotate = (node: ts.Node, checker: ts.TypeChecker) => {
 
 const createTransformer = (program: ts.Program) => {
   const checker = program.getTypeChecker()
-  return (context) => {
+  return (context: ts.TransformationContext) => {
     // only transform the top level class declaration
-    return (node) => ts.visitEachChild(node, (node) => annotate(node, checker), context)
+    return (node: ts.SourceFile) => ts.visitEachChild(node, (node) => annotate(node, checker), context)
   }
 }
 
@@ -167,6 +168,6 @@ export default function (id: string, code: string, createProgram: (fileName: str
     return code
   }
   PROGRAM_CACHE.set(id, createProgram(id, PROGRAM_CACHE.get(id)))
-  const program = PROGRAM_CACHE.get(id)
-  return printer.printFile(ts.transform(program.getSourceFile(id), [createTransformer(program)]).transformed[0])
+  const program = PROGRAM_CACHE.get(id)!
+  return printer.printFile(ts.transform(program.getSourceFile(id)!, [createTransformer(program)]).transformed[0])
 }
