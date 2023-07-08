@@ -1,7 +1,7 @@
 /**
  * esbuild, that used by vite as default js/ts compiler, does not support `emitDecoratorMetadata`,
- * it results that we can't get 'design:type' metadata, and have to mark the type of each property manually.
- * To solve this problem, we use tsc to transpile the source code before esbuild.
+ * it results that we can't get 'design:type' metadata, and have to mark the type for each property manually.
+ * To solve this problem, we use typescript compiler api to patch the source code.
  * @see https://www.typescriptlang.org/docs/handbook/decorators.html#metadata
  */
 
@@ -24,7 +24,6 @@ export default function emitReflectMetadata(options: Options = {}) {
     ts.sys,
     path.dirname(tsConfigPath)
   )
-
   const createProgram = (fileName: string, old?: ts.Program) => {
     return ts.createProgram(
       [fileName],

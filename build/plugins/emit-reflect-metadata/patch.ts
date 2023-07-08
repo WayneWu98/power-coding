@@ -29,6 +29,7 @@ const getArrayElement = (type: ts.Type): ts.Type | undefined => {
   // @ts-ignore
   return type.typeArguments?.[0]
 }
+
 const getPrimitiveType = (type: ts.Type): string | undefined => {
   switch (type.flags) {
     case ts.TypeFlags.String:
@@ -60,6 +61,7 @@ const findLastIndexDecoratorOfModifiers = (modifiers?: ArrayLike<ts.ModifierLike
   return modifiers.length - 1
 }
 
+// inject type and fields metadata to class members, and set default type to be `undefined` if not specified
 const injectMetaData = (node: ts.PropertyDeclaration, type: string = 'void 0', fields: string[] = []) => {
   const typeDecorator = createMetaDataDecorator('design:type', ts.factory.createIdentifier(type))
   const membersDecorator = createMetaDataDecorator(
@@ -80,74 +82,77 @@ const injectMetaData = (node: ts.PropertyDeclaration, type: string = 'void 0', f
 }
 
 const annotate = (node: ts.Node, checker: ts.TypeChecker) => {
-  if (ts.isClassDeclaration(node)) {
-    const fields = [] as ts.PropertyDeclaration[]
-    const patchedMembers = []
-    for (const member of node.members) {
-      if (!ts.isPropertyDeclaration(member)) {
-        patchedMembers.push(member)
-        continue
+  if (!ts.isClassDeclaration(node)) return node
+
+  const fields = [] as ts.PropertyDeclaration[]
+  const patchedMembers = []
+  for (const member of node.members) {
+    if (!ts.isPropertyDeclaration(member)) {
+      patchedMembers.push(member)
+      continue
+    }
+    fields.push(member)
+    if (ts.isMemberName(member.name)) {
+      let type = checker.getTypeAtLocation(member.name)
+      if (member.questionToken && type.flags === ts.TypeFlags.Union) {
+        // when type is optional, we should find the non-undefined type
+        // @ts-ignore
+        type = (type.types as ts.Type[]).find((t) => t.flags !== ts.TypeFlags.Undefined)
       }
-      fields.push(member)
-      if (ts.isMemberName(member.name)) {
-        let type = checker.getTypeAtLocation(member.name)
-        if (member.questionToken && type.flags === ts.TypeFlags.Union) {
-          // when type is optional, we should find the non-undefined type
-          // @ts-ignore
-          type = (type.types as ts.Type[]).find((t) => t.flags !== ts.TypeFlags.Undefined)
-        }
-        const fields = type
-          .getProperties()
-          .filter((member) => member.valueDeclaration && !ts.isMethodDeclaration(member.valueDeclaration))
-          .map((member) => member.getName())
-        let patched = member
-        if (isClassType(type)) {
-          patched = injectMetaData(
-            member,
-            ts.isTypeReferenceNode(member.type) ? member.type?.typeName?.getText() : 'Object',
-            fields
-          )
-        } else if (isArrayType(type) || checker.isArrayLikeType(type)) {
-          const elementType = getArrayElement(type)
-          if (!elementType) {
-            patched = injectMetaData(member, 'Array')
-          } else if (isClassType(elementType)) {
-            patched = injectMetaData(member, elementType.symbol?.name, [])
-          } else if (isObjectType(elementType)) {
-            patched = injectMetaData(member, 'Object', fields)
-          } else {
-            patched = injectMetaData(member, getPrimitiveType(elementType))
-          }
-        } else if (isObjectType(type)) {
+      // get all member names of the type except methods
+      const fields = type
+        .getProperties()
+        .filter((member) => member.valueDeclaration && !ts.isMethodDeclaration(member.valueDeclaration))
+        .map((member) => member.getName())
+      let patched = member
+      if (isClassType(type)) {
+        patched = injectMetaData(
+          member,
+          ts.isTypeReferenceNode(member.type) ? member.type?.typeName?.getText() : 'Object',
+          fields
+        )
+      } else if (isArrayType(type) || checker.isArrayLikeType(type)) {
+        const elementType = getArrayElement(type)
+        if (!elementType) {
+          // if we can't get the element type, we just annotate it as Array
+          patched = injectMetaData(member, 'Array')
+        } else if (isClassType(elementType)) {
+          patched = injectMetaData(member, elementType.symbol?.name, [])
+        } else if (isObjectType(elementType)) {
           patched = injectMetaData(member, 'Object', fields)
         } else {
-          patched = injectMetaData(member, getPrimitiveType(type))
+          // primitive type
+          patched = injectMetaData(member, getPrimitiveType(elementType))
         }
-        patchedMembers.push(patched)
+      } else if (isObjectType(type)) {
+        patched = injectMetaData(member, 'Object', fields)
+      } else {
+        // primitive type
+        patched = injectMetaData(member, getPrimitiveType(type))
       }
+      patchedMembers.push(patched)
     }
-    const afterLastDecoratorIndex = findLastIndexDecoratorOfModifiers(node.modifiers) + 1
-    const headingModifiers = [...(node.modifiers ?? []).slice(0, afterLastDecoratorIndex)]
-    const trailingModifiers = [...(node.modifiers ?? []).slice(afterLastDecoratorIndex)]
-    return ts.factory.updateClassDeclaration(
-      node,
-      [
-        ...headingModifiers,
-        createMetaDataDecorator(
-          'design:fields',
-          ts.factory.createArrayLiteralExpression(
-            fields.map((field) => ts.factory.createStringLiteral(field.name.getText()))
-          )
-        ),
-        ...trailingModifiers
-      ],
-      node.name,
-      node.typeParameters,
-      node.heritageClauses,
-      patchedMembers
-    )
   }
-  return node
+  const afterLastDecoratorIndex = findLastIndexDecoratorOfModifiers(node.modifiers) + 1
+  const headingModifiers = [...(node.modifiers ?? []).slice(0, afterLastDecoratorIndex)]
+  const trailingModifiers = [...(node.modifiers ?? []).slice(afterLastDecoratorIndex)]
+  return ts.factory.updateClassDeclaration(
+    node,
+    [
+      ...headingModifiers,
+      createMetaDataDecorator(
+        'design:fields',
+        ts.factory.createArrayLiteralExpression(
+          fields.map((field) => ts.factory.createStringLiteral(field.name.getText()))
+        )
+      ),
+      ...trailingModifiers
+    ],
+    node.name,
+    node.typeParameters,
+    node.heritageClauses,
+    patchedMembers
+  )
 }
 
 const createTransformer = (program: ts.Program) => {
@@ -160,6 +165,7 @@ const createTransformer = (program: ts.Program) => {
 
 const hasClassDeclaration = (ast: ts.SourceFile) => ast.statements.some((statement) => ts.isClassDeclaration(statement))
 
+// cache program instance, and it will be used as the old program in next creation for performance optimization
 const PROGRAM_CACHE = new Map<string, ts.Program>()
 
 export default function (id: string, code: string, createProgram: (fileName: string, old?: ts.Program) => ts.Program) {
