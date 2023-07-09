@@ -17,7 +17,7 @@ const isArrayType = (type: ts.Type): boolean => {
 }
 const isFunctionType = (type: ts.Type): boolean => {
   const signature = type?.getCallSignatures()?.[0]
-  if (!signature) return false
+  if (!signature?.declaration) return false
   return ts.isFunctionTypeNode(signature.declaration)
 }
 
@@ -55,6 +55,7 @@ const getPrimitiveType = (type: ts.Type): string | undefined => {
 }
 
 const getClassFields = (node: ts.ClassDeclaration, checker: ts.TypeChecker): string[] => {
+  if (!node.name) return []
   return checker
     .getTypeAtLocation(node.name)
     .getProperties()
@@ -127,7 +128,7 @@ const annotate = (node: ts.Node, checker: ts.TypeChecker) => {
       if (isClassType(type)) {
         patched = injectMetaData(
           member,
-          ts.isTypeReferenceNode(member.type) ? member.type?.typeName?.getText() : 'Object',
+          member.type && ts.isTypeReferenceNode(member.type) ? member.type?.typeName?.getText() : 'Object',
           fields
         )
       } else if (isArrayType(type) || checker.isArrayLikeType(type)) {
