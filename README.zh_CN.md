@@ -20,7 +20,7 @@
 
 这里包含了基本的装饰器，用来给 class 或 class 成员添加一些元信息以及扩展一些行为。
 
-- Derive - 类装饰器，通过传入一个 Deriver，自动给类派生一些方法或者属性，目前只内置了一个 CRUDDeriver，自动给某个 Model 实现增删改查，可以在 `src/model/behavior/CRUD.ts` 中找到
+- Derive - 类装饰器，通过传入多个 Deriver，自动给类派生一些方法或者属性，目前内置了 CRUDDeriver、 PageableListDeriver 和 ScrollableListDeriver, 分别自动给某个 Model 实现增删改查、分页加载 和 滚动加载，可以在 `src/model/behavior/` 中找到
 - Field - 类成员装饰器，给类成员添加一些元信息，以控制一些逻辑行为，可以通过 `getField()` 方法获取某个类成员的元信息
 - Model - 类装饰器，与 Field 类似，不过是给类添加元信息，可以通过 `getField()` 方法获取某个类成员的元信息
 - Validator - 类成员装饰器，给类成员添加数据校验器，内置几个校验器可以在 `src/utils/validator.ts` 中找到，当配置了校验器，可以通过 `validate()` 方法对某个类成员或所有成员进行数据校验
@@ -32,6 +32,8 @@
 - BaseModel - 任何 Model 都需要继承这个类，它定义了一些基本的操作方法（如：`getField()`, `getModel()`, `validate()`, `from`），这些操作方法与上面的装饰器配合使用。
 - behavior/* - 这里定义了一些抽象类，用来手动规范 Model 具有某些行为，如：
   - CRUD 规定 Model 需要实现数据的增删改查
+  - PageableList 规定 Model 可以进行分页查询
+  - ScrollableList 规定 Model 可以进行滚动加载
   - Entity 规定 Model 是一个实体，它具有唯一标识符 ID
   - Query 规定 Model 具有一个查询参数 query
 
@@ -57,11 +59,11 @@
 >
 > ~~nestOnDeserialize 是全量复制，不会进行检测有哪些成员才是需要的，因为目前来说，对于单纯只是用 interface 和 type 进行类型标注的情况，很难获取到成员的类型信息，所以只能全量复制，如果需要更精确的控制，可以通过 transform 属性。~~已经手动实现了 class 静态分析，因此 nestOnDeserialize 只会复制需要的字段（但在一些复杂的类型标注中可能会存在问题）。
 
-## 数据校验
+### 数据校验
 
 通过 Validator 装饰器，将需要的校验函数定义在类成员上，然后通过 validate() 方法进行校验，这里内置了几个校验函数，可以在 `src/utils/validator.ts` 中找到。
 
-## Model 操作
+### Model 操作
 
 BaseModel 还定义了几个方法：
 
@@ -71,7 +73,7 @@ BaseModel 还定义了几个方法：
 
 这些方法在有些场景会非常有用：假如想修改当前个用户的信息（一个 `User` Model 作为全局状态），可以 clone 出一个新的实例，新实例双向绑定到表单组件，修改完成且更新请求成功后，将这个实例 merge 到原实例中，这样就可以实现修改用户信息的功能。
 
-## 增删改查
+### 增删改查
 
 `src/model/behavior/CRUD.ts` 规定了 Model 需要实现的增删改查方法，这里只是定义了接口，具体的实现需要在 Model 中自行实现。但一般后端对于一个实体的CRUD的接口设计基本都遵守一样的规范，所以在`src/model/behavior/CRUD.ts`中提供了一个 `CRUDDeriver`，搭配 `Derive` 装饰器使用，可以自动实现这些方法，具体使用方法可以参考 `src/model/behavior/CRUD.ts` 中的注释。
 
@@ -108,6 +110,38 @@ class User extends BaseModel implements Entity, Query {
   @Field({ ignore: { onDeserialize: true } })
   query: Record<string, any>
 }
+```
+
+为了适配更常见的场景，behavior 还提供了 分页加载 和 滚动加载 的行为约束（支持自动扩展），这两个行为约束与自动继承函数，可以让你在派生出 CRUD 方法后，直接使用 下一页、上一页、刷新、加载更多 等常见的分页操作：
+
+```ts
+@Model()
+class User extends BaseModel {
+  id: number
+}
+
+@Model()
+class UsersQuery extends BaseModel {
+  pagination: Pagination = Pagination.default()
+}
+
+@Model()
+@Derive(CRUDDeriver('users', ['get']), PageableListDeriver(User))
+class Users extends BaseModel implements Query<UsersQuery> {
+  // query only for serialization as request params
+  @Field({ ignore: { onDeserialize: true } })
+  // PageableListDeriver acquire model should extend Query<{ pagination: Pagination }> and CRUD<{ items: any[] }>
+  query: UsersQuery = UsersQuery.default()
+}
+
+interface Users extends CRUD<Users>, PageableList<User> {}
+
+const users = Users.default()
+users.refresh()
+users.next()
+users.prev()
+users.reload()
+users.goto(20)
 ```
 
 ## 注意

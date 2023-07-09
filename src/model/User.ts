@@ -77,7 +77,7 @@ export class UsersQuery extends BaseModel {
 
 @Model()
 @Derive(CRUDDeriver('api/users', ['get']), PageableListDeriver(User))
-export class PageableUsers extends BaseModel implements Query {
+export class PageableUsers extends BaseModel implements Query<UsersQuery> {
   // query only for serialization as request params
   @Field({ ignore: { onDeserialize: true } })
   query: UsersQuery = UsersQuery.default()
@@ -88,7 +88,7 @@ export interface PageableUsers extends CRUD<PageableUsers>, PageableList<User> {
 
 @Model()
 @Derive(CRUDDeriver('api/users', ['get']), ScrollableListDeriver(User))
-export class ScrollableUsers extends BaseModel implements Query {
+export class ScrollableUsers extends BaseModel implements Query<UsersQuery> {
   // query only for serialization as request params
   @Field({ ignore: { onDeserialize: true } })
   query: UsersQuery = UsersQuery.default()
