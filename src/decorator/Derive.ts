@@ -1,12 +1,14 @@
 import BaseModel from '@/model/BaseModel'
-import { ClassConstructor } from 'class-transformer'
 
-export interface Deriver<T extends BaseModel> {
-  (cls: ClassConstructor<T>): void
+export interface Deriver<T extends typeof BaseModel> {
+  (cls: T): void | T
 }
 
-export default function <T extends BaseModel>(...derivers: Deriver<T>[]) {
-  return function (cls: ClassConstructor<T>) {
-    derivers.forEach((deriver) => deriver(cls))
+export default function <T extends typeof BaseModel>(...derivers: Deriver<T>[]) {
+  return function (cls: T) {
+    for (const deriver of derivers) {
+      cls = deriver(cls) ?? cls
+    }
+    return cls
   }
 }

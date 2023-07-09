@@ -18,6 +18,23 @@ export default abstract class CRUD<Get = any, Create = Get, Update = any, Delete
 
 type EndPoint<T extends Object> = string | ((action: Action, model: T) => string)
 
+const UNIMPLEMENTED = {
+  get: () => {
+    throw new Error('Action GET not implemented.')
+  },
+  create: () => {
+    throw new Error('Action CREATE not implemented.')
+  },
+  update: () => {
+    throw new Error('Action UPDATE not implemented.')
+  },
+  delete: () => {
+    throw new Error('Action DELETE not implemented.')
+  }
+} as Record<Action, Function>
+
+const ALL_ACTIONS: Action[] = ['get', 'create', 'update', 'delete']
+
 /**
  * this is a helper function to implement CRUD behavior for a model,
  * it assumes that the design standard of the backend is RESTful-based:
@@ -37,16 +54,18 @@ type EndPoint<T extends Object> = string | ((action: Action, model: T) => string
  * ```typescript
  * @Derive(CRUDDeriver('api/users'))
  * class User extends BaseModel implements Entity {
- *    id: number
+ *   id: number
  * }
+ *
+ * interface User extends CRUD<User> {}
  * ```
  */
-export function CRUDDeriver<T extends BaseModel>(
-  endpoint: EndPoint<T>,
-  actions: Action[] = ['get', 'create', 'update', 'delete']
+export function CRUDDeriver<T extends typeof BaseModel & ClassConstructor<CRUD<R>>, R extends BaseModel>(
+  endpoint: EndPoint<R>,
+  actions: Action[] = ALL_ACTIONS
 ) {
-  return function (cls: ClassConstructor<T>) {
-    const getEndpoint = (action: Action, model: T) => {
+  return function (cls: T) {
+    const getEndpoint = (action: Action, model: R) => {
       if (typeof endpoint === 'string') {
         if (['create'].includes(action) || !Reflect.has(model, 'id')) {
           return endpoint
@@ -66,12 +85,13 @@ export function CRUDDeriver<T extends BaseModel>(
       update: 'put',
       delete: 'delete'
     } as const
-    for (const action of actions) {
+    for (const action of ALL_ACTIONS) {
+      if (!actions.includes(action)) {
+        cls.prototype[action] = UNIMPLEMENTED[action]
+        continue
+      }
       cls.prototype[action] = function () {
         const method = action2method[action]
-        if (!method) {
-          throw new Error(`Action ${action} not implemented.`)
-        }
         if (isParamsMethod(method)) {
           return requestModel[method](
             getEndpoint(action, this),

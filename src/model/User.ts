@@ -12,6 +12,8 @@ import { Pattern, Required } from '@/utils/validator'
 import * as storage from '@/utils/storage'
 import Sorter from './Sorter'
 import dayjs, { Dayjs } from 'dayjs'
+import PageableList, { PageableListDeriver } from './behavior/PageableList'
+import ScrollableList, { ScrollableListDeriver } from './behavior/ScrollableList'
 
 @Model({})
 @Derive(CRUDDeriver('api/users'))
@@ -57,7 +59,7 @@ export class UsersQuery extends BaseModel {
   pagination: Pagination = Pagination.default()
   @Field({ flatOnSerialize: true })
   sorter: Sorter = Sorter.default()
-  @Field({ flatOnSerialize: true })
+  @Field({ flatOnSerialize: true, transform: { onSerialize: (value) => ({ id: value.id?.[0] }) } })
   filters: Record<string, any> = {}
   @Field({
     flatOnSerialize: true,
@@ -74,16 +76,23 @@ export class UsersQuery extends BaseModel {
 }
 
 @Model()
-@Derive(CRUDDeriver('api/users', ['get']))
-export class Users extends BaseModel implements Query {
+@Derive(CRUDDeriver('api/users', ['get']), PageableListDeriver(User))
+export class PageableUsers extends BaseModel implements Query {
   // query only for serialization as request params
   @Field({ ignore: { onDeserialize: true } })
   query: UsersQuery = UsersQuery.default()
-  @Field({ type: User })
-  items: User[] = []
-  @Field()
-  total: number = 0
 }
 
 // for type check, we should declare a interface named as same as the class's, and extends the behavior class
-export interface Users extends CRUD<Users> {}
+export interface PageableUsers extends CRUD<PageableUsers>, PageableList<User> {}
+
+@Model()
+@Derive(CRUDDeriver('api/users', ['get']), ScrollableListDeriver(User))
+export class ScrollableUsers extends BaseModel implements Query {
+  // query only for serialization as request params
+  @Field({ ignore: { onDeserialize: true } })
+  query: UsersQuery = UsersQuery.default()
+}
+
+// for type check, we should declare a interface named as same as the class's, and extends the behavior class
+export interface ScrollableUsers extends CRUD<ScrollableUsers>, ScrollableList<User> {}

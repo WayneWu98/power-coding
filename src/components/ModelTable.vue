@@ -32,7 +32,7 @@ import { BaseModelConstructor } from '@/model/BaseModel'
 import Sorter from '@/model/Sorter'
 import Pagination from '@/model/Pagination'
 import { Table as ATable, TableColumnType, TableProps } from 'ant-design-vue'
-import { FilterConfirmProps } from 'ant-design-vue/lib/table/interface'
+import { FilterConfirmProps, FilterValue } from 'ant-design-vue/lib/table/interface'
 import { Key } from 'ant-design-vue/lib/_util/type'
 
 type Model = T
@@ -68,10 +68,10 @@ interface Props extends AcceptedTableProps {
   model: Model
   properties: Properties
   items?: ModelInstance[]
-  filtered?: Properties[number][]
   sorter?: Sorter
   total?: number
   pagination?: Pagination
+  filters?: Record<Properties[number], FilterValue | null>
 }
 
 const props = withDefaults(defineProps<Props>(), { showHeader: true, size: 'middle', rowKey: 'id' })
@@ -79,7 +79,11 @@ const props = withDefaults(defineProps<Props>(), { showHeader: true, size: 'midd
 interface ComponentEvent {
   (e: 'update:expandedRowKeys', keys: string[]): void
   (e: 'update:pagination', pagination: Pagination): void
+  (e: 'paginate', pagination: Pagination): void
+  (e: 'update:filters', filters: Record<Properties[number], FilterValue | null>): void
+  (e: 'filter', filters: Record<Properties[number], FilterValue | null>): void
   (e: 'update:sorter', sorter?: Sorter): void
+  (e: 'sort', sorter?: Sorter): void
   (e: 'change', ...params: Parameters<NonNullable<AcceptedTableProps['onChange']>>): void
 }
 
@@ -132,7 +136,7 @@ const columns = computed(() => {
       title: field.name,
       dataIndex: prop as string,
       key: prop as string,
-      filtered: props.filtered?.includes(prop),
+      filtered: !!props.filters?.[prop],
       sortOrder,
       ...column
     }
@@ -141,9 +145,17 @@ const columns = computed(() => {
 
 const onChange: AcceptedTableProps['onChange'] = (pagination, filters, sorter, extra) => {
   if (Array.isArray(sorter)) sorter = sorter[0]
-  emit('update:sorter', Sorter.default().merge({ orderBy: sorter.order && sorter.columnKey, order: sorter.order }))
-  emit('update:pagination', Pagination.default().merge({ page: pagination.current, per: pagination.pageSize }))
-  console.log('filters', filters)
+  const _sorter = Sorter.default().merge({ orderBy: sorter.order && sorter.columnKey, order: sorter.order })
+  emit('update:sorter', _sorter)
+  emit('sort', _sorter)
+
+  const _pagination = Pagination.default().merge({ page: pagination.current, per: pagination.pageSize })
+  emit('update:pagination', _pagination)
+  emit('paginate', _pagination)
+
+  emit('update:filters', filters as any)
+  emit('filter', filters as any)
+
   emit('change', pagination, filters, sorter, extra)
 }
 </script>

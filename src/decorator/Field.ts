@@ -50,11 +50,18 @@ export function getField<T extends ClassConstructor<any>>(cls: T, field: keyof I
   return Reflect.getMetadata(FIELD_KEY, cls.prototype, field as string) ?? {}
 }
 
+const FIELDS_CACHE = new Map<any, Record<any, any>>()
 export function getFields<T extends ClassConstructor<any>>(cls: T): Record<keyof InstanceType<T>, Field> {
-  return getClassFieldList(cls).reduce((map, field) => {
-    map[field] = getField(cls, field)
-    return map
-  }, {} as Record<keyof InstanceType<T>, Field>)
+  if (!FIELDS_CACHE.has(cls)) {
+    FIELDS_CACHE.set(
+      cls,
+      getClassFieldList(cls).reduce((map, field) => {
+        map[field] = getField(cls, field)
+        return map
+      }, {} as Record<keyof InstanceType<T>, Field>)
+    )
+  }
+  return FIELDS_CACHE.get(cls)!
 }
 
 export default function (conf: Field = {}) {

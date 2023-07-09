@@ -15,6 +15,11 @@ const isObjectType = (type: ts.Type): boolean => {
 const isArrayType = (type: ts.Type): boolean => {
   return type.flags === ts.TypeFlags.Object && type.symbol?.name === 'Array'
 }
+const isFunctionType = (type: ts.Type): boolean => {
+  const signature = type?.getCallSignatures()?.[0]
+  if (!signature) return false
+  return ts.isFunctionTypeNode(signature.declaration)
+}
 
 const createMetaDataDecorator = (name: string, ...expressions: ts.Expression[]) => {
   return ts.factory.createDecorator(
@@ -47,6 +52,23 @@ const getPrimitiveType = (type: ts.Type): string | undefined => {
     default:
       return void 0
   }
+}
+
+const getClassFields = (node: ts.ClassDeclaration, checker: ts.TypeChecker): string[] => {
+  return checker
+    .getTypeAtLocation(node.name)
+    .getProperties()
+    .filter((prop) => {
+      const vd = prop.valueDeclaration
+      if (!vd) return false
+      if (ts.isMethodDeclaration(vd)) return false
+      if (ts.isPropertyDeclaration(vd)) {
+        const type = checker.getTypeAtLocation(vd)
+        return !isFunctionType(type)
+      }
+      return true
+    })
+    .map((t) => t.getName())
 }
 
 const findLastIndexDecoratorOfModifiers = (modifiers?: ArrayLike<ts.ModifierLike>) => {
@@ -83,15 +105,12 @@ const injectMetaData = (node: ts.PropertyDeclaration, type: string = 'void 0', f
 
 const annotate = (node: ts.Node, checker: ts.TypeChecker) => {
   if (!ts.isClassDeclaration(node)) return node
-
-  const fields = [] as ts.PropertyDeclaration[]
   const patchedMembers = []
   for (const member of node.members) {
     if (!ts.isPropertyDeclaration(member)) {
       patchedMembers.push(member)
       continue
     }
-    fields.push(member)
     if (ts.isMemberName(member.name)) {
       let type = checker.getTypeAtLocation(member.name)
       if (member.questionToken && type.flags === ts.TypeFlags.Union) {
@@ -143,7 +162,7 @@ const annotate = (node: ts.Node, checker: ts.TypeChecker) => {
       createMetaDataDecorator(
         'design:fields',
         ts.factory.createArrayLiteralExpression(
-          fields.map((field) => ts.factory.createStringLiteral(field.name.getText()))
+          getClassFields(node, checker).map((field) => ts.factory.createStringLiteral(field))
         )
       ),
       ...trailingModifiers
