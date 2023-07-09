@@ -30,36 +30,6 @@ export default abstract class PageableList<T> {
   refresh: () => Promise<any>
 }
 
-type ModelConstraint<T> = BaseModel & CRUD<T> & PageableList<any> & Query<{ pagination: Pagination }>
-
-async function goto<T extends PageableList<any>>(this: ModelConstraint<T>, page: number) {
-  if (this.loading) return
-  this.loading = true
-  this.query.pagination.page = page
-  try {
-    const { data } = await this.get()
-    this.merge(data, ['items', 'total'])
-    const exists = this.items.length + this.query.pagination.per * (this.query.pagination.page - 1)
-    this.isEnd = exists >= this.total
-  } finally {
-    this.loading = false
-  }
-}
-async function next<T>(this: ModelConstraint<T>) {
-  if (this.isEnd) return
-  return this.goto(this.query.pagination.page + 1)
-}
-async function prev<T>(this: ModelConstraint<T>) {
-  if (this.query.pagination.page === 1) return
-  return this.goto(this.query.pagination.page - 1)
-}
-async function reload<T>(this: ModelConstraint<T>) {
-  return this.goto(this.query.pagination.page)
-}
-function refresh<T>(this: ModelConstraint<T>) {
-  return this.goto(1)
-}
-
 /**
  * this is a deriver to implement `PageableList` behavior for a model,
  * it requires the model which would derive `PageableList` should implement CRUD behavior
@@ -82,7 +52,8 @@ function refresh<T>(this: ModelConstraint<T>) {
  * ```
  */
 export function PageableListDeriver<
-  T extends typeof BaseModel & ClassConstructor<PageableList<any> & CRUD<PageableList<R>>>,
+  T extends typeof BaseModel &
+    ClassConstructor<PageableList<any> & CRUD<PageableList<R>> & Query<{ pagination: Pagination }>>,
   R extends BaseModel
 >(itemType: ClassConstructor<R>) {
   return function (cls: T) {
@@ -91,16 +62,43 @@ export function PageableListDeriver<
     Field({ type: Boolean, ignore: true })(cls.prototype, 'loading')
     Field({ type: Boolean, ignore: true })(cls.prototype, 'isEnd')
     // @ts-ignore
-    return class extends cls {
+    return class extends cls implements PageableList<R> {
       total: number = 0
       isEnd: boolean = false
       loading: boolean = false
       items: R[] = []
-      next = next
-      prev = prev
-      goto = goto
-      reload = reload
-      refresh = refresh
+      // @ts-ignore
+      async goto(page: number) {
+        if (this.loading) return
+        this.loading = true
+        this.query.pagination.page = page
+        try {
+          const { data } = await this.get()
+          this.merge(data, ['items', 'total'])
+          const exists = this.items.length + this.query.pagination.per * (this.query.pagination.page - 1)
+          this.isEnd = exists >= this.total
+        } finally {
+          this.loading = false
+        }
+      }
+      // @ts-ignore
+      next() {
+        if (this.isEnd) return
+        return this.goto(this.query.pagination.page + 1)
+      }
+      // @ts-ignore
+      prev() {
+        if (this.query.pagination.page === 1) return
+        return this.goto(this.query.pagination.page - 1)
+      }
+      // @ts-ignore
+      reload() {
+        return this.goto(this.query.pagination.page)
+      }
+      // @ts-ignore
+      refresh() {
+        return this.goto(1)
+      }
     }
   }
 }

@@ -24,34 +24,6 @@ export default abstract class ScrollableList<T> {
   refresh: () => Promise<void>
 }
 
-type ModelConstraint<T> = BaseModel & CRUD<T> & ScrollableList<any> & Query<{ pagination: Pagination }>
-
-async function loadMore<T extends ScrollableList<any>>(this: ModelConstraint<T>) {
-  if (this.isEnd || this.loading) return
-  this.query.pagination.page += 1
-  this.loading = true
-  try {
-    const { data } = await this.get()
-    this.items.push(...data.items)
-    this.total = data.total
-    this.isEnd = this.items.length >= this.total
-  } finally {
-    this.loading = false
-  }
-}
-async function refresh<T extends ScrollableList<any>>(this: ModelConstraint<T>) {
-  if (this.loading) return
-  this.loading = true
-  this.query.pagination.page = 1
-  try {
-    const { data } = await this.get()
-    this.merge(data, ['items', 'total'])
-    this.isEnd = this.items.length >= this.total
-  } finally {
-    this.loading = false
-  }
-}
-
 /**
  * this is a deriver to implement `ScrollableList` behavior for a model,
  * it requires the model which would derive `ScrollableList` should implement CRUD behavior
@@ -74,7 +46,8 @@ async function refresh<T extends ScrollableList<any>>(this: ModelConstraint<T>) 
  * ```
  */
 export function ScrollableListDeriver<
-  T extends typeof BaseModel & ClassConstructor<ScrollableList<any> & CRUD<ScrollableList<R>>>,
+  T extends typeof BaseModel &
+    ClassConstructor<ScrollableList<any> & CRUD<ScrollableList<R>> & Query<{ pagination: Pagination }>>,
   R extends BaseModel
 >(itemType: ClassConstructor<R>) {
   return function (cls: T) {
@@ -83,13 +56,38 @@ export function ScrollableListDeriver<
     Field({ type: Boolean, ignore: true })(cls.prototype, 'loading')
     Field({ type: Boolean, ignore: true })(cls.prototype, 'isEnd')
     // @ts-ignore
-    return class extends cls {
+    return class extends cls implements ScrollableList<R> {
       total: number = 0
       isEnd: boolean = false
       loading: boolean = false
       items: R[] = []
-      loadMore = loadMore
-      refresh = refresh
+      // @ts-ignore
+      async loadMore() {
+        if (this.isEnd || this.loading) return
+        this.query.pagination.page += 1
+        this.loading = true
+        try {
+          const { data } = await this.get()
+          this.items.push(...data.items)
+          this.total = data.total
+          this.isEnd = this.items.length >= this.total
+        } finally {
+          this.loading = false
+        }
+      }
+      // @ts-ignore
+      async refresh() {
+        if (this.loading) return
+        this.loading = true
+        this.query.pagination.page = 1
+        try {
+          const { data } = await this.get()
+          this.merge(data, ['items', 'total'])
+          this.isEnd = this.items.length >= this.total
+        } finally {
+          this.loading = false
+        }
+      }
     }
   }
 }

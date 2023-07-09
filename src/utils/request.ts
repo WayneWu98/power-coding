@@ -1,4 +1,4 @@
-import Axios, { AxiosRequestConfig, Method } from 'axios'
+import Axios, { AxiosRequestConfig } from 'axios'
 import BaseModel from '@/model/BaseModel'
 import * as storage from '@/utils/storage'
 import useUserStore from '@/store/user'
@@ -36,10 +36,6 @@ export enum DataMethod {
   PATCH = 'patch'
 }
 
-export const isDataMethod = (method: Method): method is DataMethod => {
-  return [DataMethod.POST, DataMethod.PUT, DataMethod.PATCH].includes(method as DataMethod)
-}
-
 function createModelDataRequest(method: DataMethod) {
   return function <T extends typeof BaseModel>(url: string, data: any, config: AxiosRequestConfig = {}, cls: T) {
     return request<any, Response<Object>>({
@@ -56,10 +52,6 @@ export enum ParamsMethod {
   DELETE = 'delete'
 }
 
-export const isParamsMethod = (method: Method): method is ParamsMethod => {
-  return [ParamsMethod.GET, ParamsMethod.DELETE].includes(method as ParamsMethod)
-}
-
 function createModelParamsRequest(method: ParamsMethod) {
   return function <T extends typeof BaseModel>(url: string, params: any, config: AxiosRequestConfig = {}, cls: T) {
     return request<any, Response<Object>>({
@@ -67,7 +59,7 @@ function createModelParamsRequest(method: ParamsMethod) {
       method,
       params,
       ...config
-    }).then(({ meta, data }) => ({ meta, data: cls.from(data) }))
+    }).then(({ meta, data }) => ({ meta, data: cls.from(data) } as Response<InstanceType<T>>))
   }
 }
 

@@ -5,7 +5,7 @@
 
 import { ClassConstructor } from 'class-transformer'
 import BaseModel from '../BaseModel'
-import { isDataMethod, isParamsMethod, requestModel } from '@/utils/request'
+import { requestModel } from '@/utils/request'
 
 type Action = 'get' | 'create' | 'update' | 'delete'
 
@@ -17,23 +17,6 @@ export default abstract class CRUD<Get = any, Create = Get, Update = any, Delete
 }
 
 type EndPoint<T extends Object> = string | ((action: Action, model: T) => string)
-
-const UNIMPLEMENTED = {
-  get: () => {
-    throw new Error('Action GET not implemented.')
-  },
-  create: () => {
-    throw new Error('Action CREATE not implemented.')
-  },
-  update: () => {
-    throw new Error('Action UPDATE not implemented.')
-  },
-  delete: () => {
-    throw new Error('Action DELETE not implemented.')
-  }
-} as Record<Action, Function>
-
-const ALL_ACTIONS: Action[] = ['get', 'create', 'update', 'delete']
 
 /**
  * this is a helper function to implement CRUD behavior for a model,
@@ -62,7 +45,7 @@ const ALL_ACTIONS: Action[] = ['get', 'create', 'update', 'delete']
  */
 export function CRUDDeriver<T extends typeof BaseModel & ClassConstructor<CRUD<R>>, R extends BaseModel>(
   endpoint: EndPoint<R>,
-  actions: Action[] = ALL_ACTIONS
+  actions: Action[] = ['get', 'create', 'update', 'delete']
 ) {
   return function (cls: T) {
     const getEndpoint = (action: Action, model: R) => {
@@ -74,40 +57,47 @@ export function CRUDDeriver<T extends typeof BaseModel & ClassConstructor<CRUD<R
           // @ts-ignore
           return `${endpoint}/${model.id}`
         }
-        throw new Error('Action not implemented.')
       } else {
         return endpoint(action, model)
       }
     }
-    const action2method = {
-      get: 'get',
-      create: 'post',
-      update: 'put',
-      delete: 'delete'
-    } as const
-    for (const action of ALL_ACTIONS) {
-      if (!actions.includes(action)) {
-        cls.prototype[action] = UNIMPLEMENTED[action]
-        continue
+    // @ts-ignore
+    return class extends cls {
+      // @ts-ignore
+      get(this: R) {
+        if (!actions.includes('get')) {
+          throw new Error('Action GET not implemented.')
+        }
+        const constructor = Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel & ClassConstructor<R>
+        // @ts-ignore
+        return requestModel.get(getEndpoint('get', this), this.query ?? {}, {}, constructor)
       }
-      cls.prototype[action] = function () {
-        const method = action2method[action]
-        if (isParamsMethod(method)) {
-          return requestModel[method](
-            getEndpoint(action, this),
-            this.query ?? {},
-            {},
-            Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel
-          )
+      // @ts-ignore
+      create(this: R) {
+        if (!actions.includes('create')) {
+          throw new Error('Action CREATE not implemented.')
         }
-        if (isDataMethod(method)) {
-          return requestModel[method](
-            getEndpoint(action, this),
-            this,
-            { params: this.query ?? {} },
-            Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel
-          )
+        const constructor = Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel & ClassConstructor<R>
+        // @ts-ignore
+        return requestModel.post(getEndpoint('create', this), this, { params: this.query ?? {} }, constructor)
+      }
+      // @ts-ignore
+      update(this: R) {
+        if (!actions.includes('update')) {
+          throw new Error('Action UPDATE not implemented.')
         }
+        const constructor = Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel & ClassConstructor<R>
+        // @ts-ignore
+        return requestModel.put(getEndpoint('update', this), this, { params: this.query ?? {} }, constructor)
+      }
+      // @ts-ignore
+      delete(this: R) {
+        if (!actions.includes('delete')) {
+          throw new Error('Action DELETE not implemented.')
+        }
+        const constructor = Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel & ClassConstructor<R>
+        // @ts-ignore
+        return requestModel.delete(getEndpoint('delete', this), this.query ?? {}, {}, constructor)
       }
     }
   }
