@@ -2,6 +2,8 @@
 
 [English](./README.md) | 中文简体
 
+> 可以阅读 [《利用装饰器进行 OOP 开发的实践》](https://wayne-wu.com/posts/decorators-for-oop-coding) 来深入了解这个项目的初衷以及思考。
+
 这个项目的目标是尝试寻找一种更加合理的方式去组织前端代码，正确处理 View、View Model、Entity 之间的逻辑关系，加强这几个部分之间的“逻辑耦合”，以 View Model 为中心，将 View 和 Entity 联系到一起，借助强大的装饰器和元编程，减少重复逻辑的同时，将命令式代码转换为声明式代码，提高代码的可读性和可维护性。
 
 ## 特性

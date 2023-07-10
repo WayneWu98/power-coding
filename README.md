@@ -2,6 +2,8 @@
 
 English | [中文简体](./README.zh_CN.md)
 
+> Read the [《利用装饰器进行 OOP 开发的实践》](https://wayne-wu.com/posts/decorators-for-oop-coding) for in-depth understanding of the intention and thoughts of this project
+
 The goal of this project is to looking for a way to improve the efficiency of coding, and handle the logic between View, ViewModel and Entity in concise way, to strengthen the coupling of logic. Bring View and Entity together by centering on ViewModel. Under the power decorator and meta-coding, write declarative code, and make code more readable and maintainable.
 
 ## Features
