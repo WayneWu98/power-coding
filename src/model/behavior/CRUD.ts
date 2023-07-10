@@ -10,10 +10,10 @@ import { requestModel } from '@/utils/request'
 type Action = 'get' | 'create' | 'update' | 'delete'
 
 export default abstract class CRUD<Get = any, Create = Get, Update = any, Delete = any> {
-  get: () => Promise<Response<Get>>
-  create: () => Promise<Response<Create>>
-  update: () => Promise<Response<Update>>
-  delete: () => Promise<Response<Delete>>
+  get: () => Promise<ApiResponse<Get>>
+  create: () => Promise<ApiResponse<Create>>
+  update: () => Promise<ApiResponse<Update>>
+  delete: () => Promise<ApiResponse<Delete>>
 }
 
 type EndPoint<T extends Object> = string | ((action: Action, model: T) => string)

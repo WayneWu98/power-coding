@@ -1,4 +1,4 @@
-interface Response<T> {
+interface ApiResponse<T> {
   meta: {
     code: number
     message: string

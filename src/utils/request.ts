@@ -38,7 +38,7 @@ export enum DataMethod {
 
 function createModelDataRequest(method: DataMethod) {
   return function <T extends typeof BaseModel>(url: string, data: any, config: AxiosRequestConfig = {}, cls: T) {
-    return request<any, Response<Object>>({
+    return request<any, ApiResponse<Object>>({
       url,
       method,
       data,
@@ -54,12 +54,12 @@ export enum ParamsMethod {
 
 function createModelParamsRequest(method: ParamsMethod) {
   return function <T extends typeof BaseModel>(url: string, params: any, config: AxiosRequestConfig = {}, cls: T) {
-    return request<any, Response<Object>>({
+    return request<any, ApiResponse<Object>>({
       url,
       method,
       params,
       ...config
-    }).then(({ meta, data }) => ({ meta, data: cls.from(data) } as Response<InstanceType<T>>))
+    }).then(({ meta, data }) => ({ meta, data: cls.from(data) } as ApiResponse<InstanceType<T>>))
   }
 }
 

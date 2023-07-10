@@ -48,7 +48,7 @@ export class UserAuth extends BaseModel {
 
   login() {
     return request
-      .post<any, Response<{ token: string }>>('/api/login', this)
+      .post<any, ApiResponse<{ token: string }>>('/api/login', this)
       .then(({ data }) => storage.setItem('token', data.token))
   }
 }
