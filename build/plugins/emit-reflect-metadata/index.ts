@@ -15,6 +15,7 @@ interface Options {
   include?: FilterPattern
   exclude?: FilterPattern
   tsconfig?: string
+  disableCache?: boolean
 }
 
 export default function emitReflectMetadata(options: Options = {}) {
@@ -44,7 +45,7 @@ export default function emitReflectMetadata(options: Options = {}) {
       if (!filter(id)) {
         return source
       }
-      return patch(id, source, createProgram)
+      return patch(id, source, { createProgram, disableCache: options.disableCache })
     }
   } as Plugin
 }

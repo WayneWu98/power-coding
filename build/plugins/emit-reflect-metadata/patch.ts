@@ -188,12 +188,17 @@ const hasClassDeclaration = (ast: ts.SourceFile) => ast.statements.some((stateme
 // cache program instance, and it will be used as the old program in next creation for performance optimization
 const PROGRAM_CACHE = new Map<string, ts.Program>()
 
-export default function (id: string, code: string, createProgram: (fileName: string, old?: ts.Program) => ts.Program) {
+interface Config {
+  createProgram: (fileName: string, old?: ts.Program) => ts.Program
+  disableCache?: boolean
+}
+
+export default function (id: string, code: string, { createProgram, disableCache }: Config) {
   const sourceFile = ts.createSourceFile(id, code, ts.ScriptTarget.Latest, true)
   if (!sourceFile || !hasClassDeclaration(sourceFile)) {
     return code
   }
-  PROGRAM_CACHE.set(id, createProgram(id, PROGRAM_CACHE.get(id)))
-  const program = PROGRAM_CACHE.get(id)!
+  const program = createProgram(id, PROGRAM_CACHE.get(id))
+  if (!disableCache) PROGRAM_CACHE.set(id, program)
   return printer.printFile(ts.transform(program.getSourceFile(id)!, [createTransformer(program)]).transformed[0])
 }
