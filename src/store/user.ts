@@ -8,7 +8,7 @@ export default defineStore('user', () => {
   const router = useRouter()
   const user = ref<User>()
   const getMyUser = () => User.getMyUser()
-  const refreshUser = () => getMyUser().then(({ data }) => (user.value = data))
+  const refreshUser = () => getMyUser().then((v) => (user.value = v))
   const logout = () => {
     storage.removeItem('token')
     user.value = undefined

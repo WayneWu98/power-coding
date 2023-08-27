@@ -6,17 +6,24 @@
 import { ClassConstructor } from 'class-transformer'
 import BaseModel from '../BaseModel'
 import { requestModel } from '@/utils/request'
+import { ApiFeedbackable, DEFAULT_API_FAIL_MESSAGE } from '@/decorator/Feedbackable'
+import { message } from 'ant-design-vue'
 
 type Action = 'get' | 'create' | 'update' | 'delete'
 
 export default abstract class CRUD<Get = any, Create = Get, Update = any, Delete = any> {
-  get: () => Promise<ApiResponse<Get>>
-  create: () => Promise<ApiResponse<Create>>
-  update: () => Promise<ApiResponse<Update>>
-  delete: () => Promise<ApiResponse<Delete>>
+  get: () => Promise<Get>
+  create: () => Promise<Create>
+  update: () => Promise<Update>
+  delete: () => Promise<Delete>
 }
 
-type EndPoint<T extends Object> = string | ((action: Action, model: T) => string)
+type EndPoint<T extends object> = string | ((action: Action, model: T) => string)
+
+interface DeriverOptions {
+  validatable?: boolean
+  feedbackable?: boolean
+}
 
 /**
  * this is a helper function to implement CRUD behavior for a model,
@@ -43,12 +50,13 @@ type EndPoint<T extends Object> = string | ((action: Action, model: T) => string
  * interface User extends CRUD<User> {}
  * ```
  */
-export function CRUDDeriver<T extends typeof BaseModel & ClassConstructor<CRUD<R>>, R extends BaseModel>(
-  endpoint: EndPoint<R>,
-  actions: Action[] = ['get', 'create', 'update', 'delete']
+export function CRUDDeriver<T extends typeof BaseModel & ClassConstructor<CRUD<InstanceType<T>>>>(
+  endpoint: EndPoint<InstanceType<T>>,
+  actions: Action[] = ['get', 'create', 'update', 'delete'],
+  { validatable, feedbackable }: DeriverOptions = {}
 ) {
   return function (cls: T) {
-    const getEndpoint = (action: Action, model: R) => {
+    const getEndpoint = (action: Action, model: InstanceType<T>) => {
       if (typeof endpoint === 'string') {
         if (['create'].includes(action) || !Reflect.has(model, 'id')) {
           return endpoint
@@ -61,6 +69,18 @@ export function CRUDDeriver<T extends typeof BaseModel & ClassConstructor<CRUD<R
         return endpoint(action, model)
       }
     }
+    async function handle(this: BaseModel, fn: () => Promise<any>) {
+      if (validatable) {
+        await this.validate().then((errors) => {
+          if (errors.length) {
+            message.error({ content: errors[0].message })
+            throw errors
+          }
+        })
+      }
+      if (feedbackable) return ApiFeedbackable.handle(fn, DEFAULT_API_FAIL_MESSAGE)
+      return fn()
+    }
     // @ts-ignore
     return class extends cls {
       // @ts-ignore
@@ -68,36 +88,38 @@ export function CRUDDeriver<T extends typeof BaseModel & ClassConstructor<CRUD<R
         if (!actions.includes('get')) {
           throw new Error('Action GET not implemented.')
         }
-        const constructor = Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel & ClassConstructor<R>
-        // @ts-ignore
-        return requestModel.get(getEndpoint('get', this), this.query ?? {}, {}, constructor)
+        const constructor = Reflect.getPrototypeOf(this)!.constructor as T
+        return handle.call(this, () => requestModel.get(getEndpoint('get', this)!, this.query ?? {}, {}, constructor))
       }
       // @ts-ignore
       create(this: R) {
         if (!actions.includes('create')) {
           throw new Error('Action CREATE not implemented.')
         }
-        const constructor = Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel & ClassConstructor<R>
-        // @ts-ignore
-        return requestModel.post(getEndpoint('create', this), this, { params: this.query ?? {} }, constructor)
+        const constructor = Reflect.getPrototypeOf(this)!.constructor as T
+        return handle.call(this, () =>
+          requestModel.post(getEndpoint('create', this)!, this, { params: this.query ?? {} }, constructor)
+        )
       }
       // @ts-ignore
       update(this: R) {
         if (!actions.includes('update')) {
           throw new Error('Action UPDATE not implemented.')
         }
-        const constructor = Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel & ClassConstructor<R>
-        // @ts-ignore
-        return requestModel.put(getEndpoint('update', this), this, { params: this.query ?? {} }, constructor)
+        const constructor = Reflect.getPrototypeOf(this)!.constructor as T
+        return handle.call(this, () =>
+          requestModel.put(getEndpoint('update', this)!, this, { params: this.query ?? {} }, constructor)
+        )
       }
       // @ts-ignore
       delete(this: R) {
         if (!actions.includes('delete')) {
           throw new Error('Action DELETE not implemented.')
         }
-        const constructor = Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel & ClassConstructor<R>
-        // @ts-ignore
-        return requestModel.delete(getEndpoint('delete', this), this.query ?? {}, {}, constructor)
+        const constructor = Reflect.getPrototypeOf(this)!.constructor as T
+        return handle.call(this, () =>
+          requestModel.delete(getEndpoint('delete', this)!, this.query ?? {}, {}, constructor)
+        )
       }
     }
   }

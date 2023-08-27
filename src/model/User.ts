@@ -7,13 +7,15 @@ import Pagination from './Pagination'
 import Field from '@/decorator/Field'
 import Query from './behavior/Query'
 import { request, requestModel } from '@/utils/request'
-import Validator from '@/decorator/Validator'
+import Validator, { Validatable } from '@/decorator/Validator'
 import { Pattern, Required } from '@/utils/validator'
 import * as storage from '@/utils/storage'
 import Sorter from './Sorter'
 import dayjs, { Dayjs } from 'dayjs'
 import PageableList, { PageableListDeriver } from './behavior/PageableList'
 import ScrollableList, { ScrollableListDeriver } from './behavior/ScrollableList'
+import ApiResponse from './ApiResponse'
+import { ApiFeedbackable } from '@/decorator/Feedbackable'
 
 @Model({})
 @Derive(CRUDDeriver('api/users'))
@@ -46,10 +48,13 @@ export class UserAuth extends BaseModel {
   @Validator(Required('请输入密码'))
   password: string
 
+  @Validatable()
+  @ApiFeedbackable.default({ 404: 'User does not exist' }, 'Login Success')
   login() {
-    return request
-      .post<any, ApiResponse<{ token: string }>>('/api/login', this)
-      .then(({ data }) => storage.setItem('token', data.token))
+    return request.post<any, ApiResponse<{ token: string }>>('/api/login', this).then((res) => {
+      storage.setItem('token', res.data.token)
+      return res
+    })
   }
 }
 
@@ -76,7 +81,7 @@ export class UsersQuery extends BaseModel {
 }
 
 @Model()
-@Derive(CRUDDeriver('api/users', ['get']), PageableListDeriver(User))
+@Derive(CRUDDeriver('api/users', ['get']), PageableListDeriver({ itemType: User }))
 export class PageableUsers extends BaseModel implements Query<UsersQuery> {
   // query only for serialization as request params
   @Field({ ignore: { onDeserialize: true } })
@@ -87,7 +92,7 @@ export class PageableUsers extends BaseModel implements Query<UsersQuery> {
 export interface PageableUsers extends CRUD<PageableUsers>, PageableList<User> {}
 
 @Model()
-@Derive(CRUDDeriver('api/users', ['get']), ScrollableListDeriver(User))
+@Derive(CRUDDeriver('api/users', ['get']), ScrollableListDeriver({ itemType: User }))
 export class ScrollableUsers extends BaseModel implements Query<UsersQuery> {
   // query only for serialization as request params
   @Field({ ignore: { onDeserialize: true } })

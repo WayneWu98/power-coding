@@ -11,6 +11,7 @@ export default [
       const { email, password } = body
       const user = usersData.find((user) => user.email === email)
       if (!user) {
+        this.res.statusCode = 404
         return Response.notFound()
       }
       if (user.password !== password) {

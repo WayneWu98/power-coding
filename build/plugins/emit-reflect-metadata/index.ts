@@ -9,6 +9,7 @@ import path from 'path'
 import ts from 'typescript'
 import { createFilter, FilterPattern } from '@rollup/pluginutils'
 import { Plugin } from 'vite'
+import MagicString from 'magic-string'
 import patch from './patch'
 
 interface Options {
@@ -41,11 +42,13 @@ export default function emitReflectMetadata(options: Options = {}) {
   return {
     name: 'emit-reflect-metadata',
     enforce: 'pre',
-    transform(source, id) {
+    transform(code, id) {
+      const s = new MagicString(code)
       if (!filter(id)) {
-        return source
+        return { code, map: s.generateMap({ hires: true }) }
       }
-      return patch(id, source, { createProgram, disableCache: options.disableCache })
+      const patched = new MagicString(patch(id, code, { createProgram, disableCache: options.disableCache }))
+      return { code: patched.toString(), map: patched.generateMap({ hires: true }) }
     }
   } as Plugin
 }

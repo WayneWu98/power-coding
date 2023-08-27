@@ -24,6 +24,12 @@ export default abstract class ScrollableList<T> {
   refresh: () => Promise<void>
 }
 
+interface DeriverOptions<R> {
+  itemType: ClassConstructor<R>
+  extras?: Exclude<keyof ScrollableList<R>, 'items' | 'total' | 'isEnd' | 'loading'>[]
+  listFieldName?: string
+}
+
 /**
  * this is a deriver to implement `ScrollableList` behavior for a model,
  * it requires the model which would derive `ScrollableList` should implement CRUD behavior
@@ -49,9 +55,9 @@ export function ScrollableListDeriver<
   T extends typeof BaseModel &
     ClassConstructor<ScrollableList<any> & CRUD<ScrollableList<R>> & Query<{ pagination: Pagination }>>,
   R extends BaseModel
->(itemType: ClassConstructor<R>) {
+>({ itemType, extras = [], listFieldName = 'items' }: DeriverOptions<R>) {
   return function (cls: T) {
-    Field({ type: itemType })(cls.prototype, 'items')
+    Field({ type: itemType, fieldName: listFieldName })(cls.prototype, 'items')
     Field({ type: Number, ignore: { onSerialize: true } })(cls.prototype, 'total')
     Field({ type: Boolean, ignore: true })(cls.prototype, 'loading')
     Field({ type: Boolean, ignore: true })(cls.prototype, 'isEnd')
@@ -67,8 +73,9 @@ export function ScrollableListDeriver<
         this.query.pagination.page += 1
         this.loading = true
         try {
-          const { data } = await this.get()
+          const data = await this.get()
           this.items.push(...data.items)
+          this.merge(data, extras)
           this.total = data.total
           this.isEnd = this.items.length >= this.total
         } finally {
@@ -81,8 +88,8 @@ export function ScrollableListDeriver<
         this.loading = true
         this.query.pagination.page = 1
         try {
-          const { data } = await this.get()
-          this.merge(data, ['items', 'total'])
+          const data = await this.get()
+          this.merge(data, [...extras, 'items', 'total'])
           this.isEnd = this.items.length >= this.total
         } finally {
           this.loading = false

@@ -1,3 +1,5 @@
+import BaseModel from '@/model/BaseModel'
+import { message } from 'ant-design-vue'
 import { ClassConstructor } from 'class-transformer'
 import 'reflect-metadata'
 
@@ -36,5 +38,28 @@ export default function (...params: Validator[]) {
   return function (prototype: Object, propertyKey: string | symbol) {
     addValidatorFieldItem(prototype.constructor as ClassConstructor<any>, propertyKey as keyof InstanceType<any>)
     Reflect.defineMetadata(VALIDATOR_KEY, params, prototype.constructor, propertyKey)
+  }
+}
+
+/**
+ * decorate instance method with Validatable, validate will be precalled before method call
+ * @returns
+ */
+export function Validatable() {
+  return function (
+    _target: object,
+    _key: string | symbol,
+    descriptor: TypedPropertyDescriptor<(this: BaseModel, ...args: any[]) => Promise<any>>
+  ) {
+    const originalMethod = descriptor.value!
+    descriptor.value = async function (...args: any[]) {
+      await this.validate().then((errors) => {
+        if (errors.length) {
+          message.error({ content: errors[0].message })
+          throw errors
+        }
+      })
+      return originalMethod.apply(this, args)
+    }
   }
 }

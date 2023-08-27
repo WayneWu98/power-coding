@@ -5,7 +5,7 @@ interface Meta {
 
 function Response({ meta, data }: { meta?: Meta; data?: any } = {}) {
   return {
-    meta: meta ?? { code: 200, message: 'success' },
+    meta: meta ?? { code: 0, message: 'success' },
     data
   }
 }

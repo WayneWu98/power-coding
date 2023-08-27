@@ -10,6 +10,7 @@
  */
 
 import { ValidatorRule } from 'ant-design-vue/es/form/interface'
+import { Dayjs } from 'dayjs'
 
 // !!!! ATTENTION !!!!
 // every validator function should return a Promise, and `resolve()` when value is valid, `reject(new Error('error detail'))` when value is invalid
@@ -40,7 +41,7 @@ export const Required = (message = 'It is required.') => {
       value = value.trim()
     }
     if (value === undefined || value === null || value === '') {
-      return Promise.reject(new Error(message))
+      return Promise.reject(message)
     }
     return Promise.resolve()
   }
@@ -55,7 +56,29 @@ export const Range = (min: number, max: number, message = `value should be range
       value = value.trim()
     }
     if (value < min || value > max) {
-      return Promise.reject(new Error(message))
+      return Promise.reject(message)
+    }
+    return Promise.resolve()
+  }
+}
+
+export const DateRange = ({
+  start,
+  end,
+  earlyMessage,
+  lateMessage
+}: {
+  start?: Dayjs
+  end?: Dayjs
+  earlyMessage?: string
+  lateMessage?: string
+}) => {
+  return (value: Dayjs) => {
+    if (start && value.isBefore(start)) {
+      return Promise.reject(earlyMessage || `Date should be after ${start.format('YYYY-MM-DD')}.`)
+    }
+    if (end && value.isAfter(end)) {
+      return Promise.reject(lateMessage || `Date should be before ${end.format('YYYY-MM-DD')}.`)
     }
     return Promise.resolve()
   }
@@ -70,7 +93,7 @@ export const Length = (min: number, max: number, message = `The length should be
       value = value.trim()
     }
     if (value.length < min || value.length > max) {
-      return Promise.reject(new Error(message))
+      return Promise.reject(message)
     }
     return Promise.resolve()
   }
@@ -79,7 +102,7 @@ export const Length = (min: number, max: number, message = `The length should be
 export const Pattern = (pattern: RegExp, message = 'Incorrect pattern.') => {
   return (value: any) => {
     if (!pattern.test(value)) {
-      return Promise.reject(new Error(message))
+      return Promise.reject(message)
     }
     return Promise.resolve()
   }

@@ -30,6 +30,12 @@ export default abstract class PageableList<T> {
   refresh: () => Promise<any>
 }
 
+interface DeriverOptions<R> {
+  itemType: ClassConstructor<R>
+  extras?: Exclude<keyof PageableList<R>, 'items' | 'total' | 'isEnd' | 'loading'>[]
+  listFieldName?: string
+}
+
 /**
  * this is a deriver to implement `PageableList` behavior for a model,
  * it requires the model which would derive `PageableList` should implement CRUD behavior
@@ -55,9 +61,9 @@ export function PageableListDeriver<
   T extends typeof BaseModel &
     ClassConstructor<PageableList<any> & CRUD<PageableList<R>> & Query<{ pagination: Pagination }>>,
   R extends BaseModel
->(itemType: ClassConstructor<R>) {
+>({ itemType, extras = [], listFieldName = 'items' }: DeriverOptions<R>) {
   return function (cls: T) {
-    Field({ type: itemType })(cls.prototype, 'items')
+    Field({ type: itemType, fieldName: listFieldName })(cls.prototype, 'items')
     Field({ type: Number, ignore: { onSerialize: true } })(cls.prototype, 'total')
     Field({ type: Boolean, ignore: true })(cls.prototype, 'loading')
     Field({ type: Boolean, ignore: true })(cls.prototype, 'isEnd')
@@ -73,8 +79,8 @@ export function PageableListDeriver<
         this.loading = true
         this.query.pagination.page = page
         try {
-          const { data } = await this.get()
-          this.merge(data, ['items', 'total'])
+          const data = await this.get()
+          this.merge(data, [...extras, 'items', 'total'])
           const exists = this.items.length + this.query.pagination.per * (this.query.pagination.page - 1)
           this.isEnd = exists >= this.total
         } finally {

@@ -2,6 +2,7 @@ import Axios, { AxiosRequestConfig } from 'axios'
 import BaseModel from '@/model/BaseModel'
 import * as storage from '@/utils/storage'
 import useUserStore from '@/store/user'
+import ApiResponse from '@/model/ApiResponse'
 
 const request = Axios.create({
   // baseURL: import.meta.env.VITE_APP_BASE_API,
@@ -20,11 +21,18 @@ request.interceptors.request.use((config) => {
 })
 
 request.interceptors.response.use(
-  (res) => res.data ?? {},
+  (res) => {
+    if (res.data?.meta?.code !== 0) {
+      throw res.data
+    }
+    return res.data ?? {}
+  },
   (err) => {
-    const data = err?.response?.data ?? {}
-    if (data.meta?.code === 401) {
+    if (err?.response?.data?.meta?.code === 401) {
       useUserStore().logout()
+    }
+    if (err?.response) {
+      throw err.response.data
     }
     throw err
   }
@@ -43,7 +51,7 @@ function createModelDataRequest(method: DataMethod) {
       method,
       data,
       ...config
-    }).then(({ meta, data }) => ({ meta, data: cls.from(data) }))
+    }).then((res) => cls.from(res.data))
   }
 }
 
@@ -59,7 +67,7 @@ function createModelParamsRequest(method: ParamsMethod) {
       method,
       params,
       ...config
-    }).then(({ meta, data }) => ({ meta, data: cls.from(data) } as ApiResponse<InstanceType<T>>))
+    }).then((res) => cls.from(res.data))
   }
 }
 

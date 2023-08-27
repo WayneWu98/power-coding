@@ -12,7 +12,6 @@ import { UserAuth } from '@/model/User'
 import { adaptValidator } from '@/utils/validator'
 import { Rule, Options } from '@form-create/ant-design-vue'
 import useUserStore from '@/store/user'
-import { message } from 'ant-design-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -46,11 +45,7 @@ const rule: Rule[] = [
 ]
 const options: Options = {
   onSubmit() {
-    userAuth.value
-      .login()
-      .then(() => userStore.refreshUser())
-      .then(() => message.success('登录成功'))
-      .catch((err) => message.error(err?.message || '登录失败'))
+    userAuth.value.login().then(() => userStore.refreshUser())
   }
 }
 </script>

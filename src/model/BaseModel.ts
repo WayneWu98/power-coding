@@ -118,12 +118,11 @@ export default class BaseModel {
   static getModel() {
     return getModel(this)
   }
-  static from<T extends typeof BaseModel>(this: T, raw: string): InstanceType<T>
-  static from<T extends typeof BaseModel>(this: T, raw: Object): InstanceType<T>
-  static from<T extends typeof BaseModel>(this: T, raw: Object[]): InstanceType<T>[]
-  static from<T extends typeof BaseModel>(this: T, raw: string | Object | Object[]): InstanceType<T> | InstanceType<T> {
+  static from<T extends typeof BaseModel, V>(this: T, raw: V): InstanceType<T>
+  static from<T extends typeof BaseModel, V>(this: T, raw: V[]): InstanceType<T>[]
+  static from<T extends typeof BaseModel, V>(this: T, raw: V | V[]): InstanceType<T> | InstanceType<T>[] {
     if (raw instanceof BaseModel) {
-      raw = raw.toPlain()
+      raw = raw.toPlain() as V
     } else if (typeof raw === 'string') {
       raw = JSON.parse(raw)
     }
