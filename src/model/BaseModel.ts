@@ -13,6 +13,13 @@ import { Validator, getFieldValidators, getAllFieldValidators } from '@/decorato
 import { DEFAULT_CLASS_NAMING_CASE } from '@/config'
 import { getMemberFieldList } from '@/utils/metadata'
 
+interface ToPlainOptions {
+  disableIgnore?: boolean
+}
+interface FromOptions {
+  disableIgnore?: boolean
+}
+
 /**
  * Every model should inherit this class.
  */
@@ -22,12 +29,12 @@ export default class BaseModel {
    */
   clone() {
     const model = Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel
-    return plainToInstance(model, this.toModelPlain(), { ignoreDecorators: true }) as typeof this
+    return model.fromModelPlain(this.toModelPlain()) as typeof this
   }
   /**
    * merge the specified fields of target to this in-place, existing properties will be overwritten
    */
-  merge<T extends Object>(target: T, fields = Object.keys(target) as (keyof T)[]) {
+  merge<T extends object>(target: T, fields = Object.keys(target) as (keyof T)[]) {
     for (const field of fields) {
       if (Reflect.has(this, field)) {
         // @ts-ignore
@@ -39,7 +46,7 @@ export default class BaseModel {
   /**
    * mix target and this to be a new instance.
    */
-  mix<T extends Object>(target: T, fields = Object.keys(target) as (keyof T)[]) {
+  mix<T extends object>(target: T, fields = Object.keys(target) as (keyof T)[]) {
     const cloned = this.clone()
     for (const field of fields) {
       // @ts-ignore
@@ -50,20 +57,19 @@ export default class BaseModel {
   /**
    * Convert current model to plain object.
    */
-  toPlain(): Object {
+  toPlain(options?: ToPlainOptions): object {
     const cls = Reflect.getPrototypeOf(this)!.constructor
-    return traverseOnSerialize(instanceToPlain(this), cls, cls)
+    return traverseOnSerialize(instanceToPlain(this), cls, cls, options)
   }
   /**
-   * there are 2 differences to `toPlain`:
+   * there are some differences to `toPlain`:
    *
-   * 1. no naming-case conversion;
-   * 2. no field will be ignore.
+   * 1. ignore will be disabled.
    *
    * For this lib, it is only used in `clone` method.
    */
   toModelPlain() {
-    return instanceToPlain(this)
+    return this.toPlain({ disableIgnore: true })
   }
   /**
    * Validate current model **by shallow**, return a list of errors when validate all fields, or a single error message when validate a specific field, empty list or undefined means no error.
@@ -118,16 +124,26 @@ export default class BaseModel {
   static getModel() {
     return getModel(this)
   }
-  static from<T extends typeof BaseModel, V>(this: T, raw: V): InstanceType<T>
-  static from<T extends typeof BaseModel, V>(this: T, raw: V[]): InstanceType<T>[]
-  static from<T extends typeof BaseModel, V>(this: T, raw: V | V[]): InstanceType<T> | InstanceType<T>[] {
+  static from<T extends typeof BaseModel, V>(this: T, raw: V, options?: FromOptions): InstanceType<T>
+  static from<T extends typeof BaseModel, V>(this: T, raw: V[], options?: FromOptions): InstanceType<T>[]
+  static from<T extends typeof BaseModel, V>(
+    this: T,
+    raw: V | V[],
+    options?: FromOptions
+  ): InstanceType<T> | InstanceType<T>[] {
     if (raw instanceof BaseModel) {
       raw = raw.toPlain() as V
     } else if (typeof raw === 'string') {
       raw = JSON.parse(raw)
     }
     // @ts-ignore
-    return plainToInstance(this, traverseOnDeserialize(raw, this, this))
+    return plainToInstance(this, traverseOnDeserialize(raw, this, this, options))
+  }
+
+  static fromModelPlain<T extends typeof BaseModel, V>(this: T, raw: V): InstanceType<T>
+  static fromModelPlain<T extends typeof BaseModel, V>(this: T, raw: V[]): InstanceType<T>[]
+  static fromModelPlain<T extends typeof BaseModel, V>(this: T, raw: V | V[]): InstanceType<T> | InstanceType<T>[] {
+    return this.from(raw, { disableIgnore: true })
   }
 }
 
@@ -141,14 +157,18 @@ function shouldIgnoreSerialize(field?: Field) {
   return false
 }
 
+interface TraverseOnSerializeOptions {
+  disableIgnore?: boolean
+}
+
 // convert naming case to forwarded while serializing
-function traverseOnSerialize(obj: any, cls: any, superCls: any): any {
+function traverseOnSerialize(obj: any, cls: any, superCls: any, options?: TraverseOnSerializeOptions): any {
   if (typeof obj !== 'object' || Object.is(obj, null)) {
     // primitive type
     return obj
   }
   if (Array.isArray(obj)) {
-    return obj.map((item) => traverseOnSerialize(item, cls, superCls))
+    return obj.map((item) => traverseOnSerialize(item, cls, superCls, options))
   }
   const transformed: Record<keyof any, any> = {}
   const model: Model = (cls?.getModel?.() ?? superCls?.getModel?.() ?? {}) as Model
@@ -160,14 +180,14 @@ function traverseOnSerialize(obj: any, cls: any, superCls: any): any {
     if (!arrayedFields.some((conf) => conf.fieldName === key)) {
       key = NAMING_CASE_MAP[model?.rename ?? NamingCase.NonCase](key)
     }
-    if (shouldIgnoreSerialize(field)) {
+    if (!options?.disableIgnore && shouldIgnoreSerialize(field)) {
       continue
     }
     if (field?.transform) {
       transformed[key] = rawValue
     } else {
       const _superCls = cls?.prototype instanceof BaseModel ? cls : superCls
-      transformed[key] = traverseOnSerialize(rawValue, fields[rawKey]?.type, _superCls)
+      transformed[key] = traverseOnSerialize(rawValue, fields[rawKey]?.type, _superCls, options)
     }
     if (field?.flatOnSerialize) {
       Object.assign(transformed, transformed[key])
@@ -187,14 +207,18 @@ function shouldIgnoreDeserialize(field?: Field) {
   return false
 }
 
+interface TraverseOnDeserializeOptions {
+  disableIgnore?: boolean
+}
+
 // convert naming case to camel case while deserializing
-function traverseOnDeserialize(obj: any, cls: any, superCls: any): any {
+function traverseOnDeserialize(obj: any, cls: any, superCls: any, options?: TraverseOnDeserializeOptions): any {
   if (typeof obj !== 'object' || Object.is(obj, null)) {
     // primitive type
     return obj
   }
   if (Array.isArray(obj)) {
-    return obj.map((item) => traverseOnDeserialize(item, cls, superCls))
+    return obj.map((item) => traverseOnDeserialize(item, cls, superCls, options))
   }
   const transformed: Record<keyof any, any> = {}
   const model = (cls?.getModel?.() ?? superCls?.getModel?.() ?? {}) as Model
@@ -208,7 +232,7 @@ function traverseOnDeserialize(obj: any, cls: any, superCls: any): any {
       k = NAMING_CASE_MAP[DEFAULT_CLASS_NAMING_CASE](rawKey)
     }
     const field = fields[k] as Field
-    if (shouldIgnoreDeserialize(field)) {
+    if (!options?.disableIgnore && shouldIgnoreDeserialize(field)) {
       continue
     }
     if (field?.transform) {
@@ -216,8 +240,9 @@ function traverseOnDeserialize(obj: any, cls: any, superCls: any): any {
       continue
     }
     const _superCls = cls?.prototype instanceof BaseModel ? cls : superCls
-    transformed[k] = traverseOnDeserialize(rawValue, fields[rawKey]?.type, _superCls)
+    transformed[k] = traverseOnDeserialize(rawValue, fields[rawKey]?.type, _superCls, options)
   }
+  const nested = new Set<string>()
   if (cls) {
     const shouldNestFields = getShouldNestFields(cls)
     for (const k of shouldNestFields) {
@@ -226,12 +251,14 @@ function traverseOnDeserialize(obj: any, cls: any, superCls: any): any {
       if (shouldCollect.length <= 0) {
         shouldCollect = Object.keys(transformed).filter((key) => !shouldNestFields.includes(key))
       }
+      shouldCollect.forEach((key) => nested.add(key))
       transformed[k] = Object.values(shouldCollect).reduce((map, k) => {
         map[k] = transformed[k]
         return map
       }, {} as Record<keyof any, any>)
     }
   }
+  ;[...nested].forEach((key) => delete transformed[key])
   return transformed
 }
 
