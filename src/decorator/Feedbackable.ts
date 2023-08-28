@@ -34,12 +34,20 @@ export const DEFAULT_API_FAIL_MESSAGE = {
   403: 'No Permission',
   404: 'Not Found'
 }
-export const DEFAULT_SUCCESS_MESSAGE = {
+export const DEFAULT_API_SUCCESS_MESSAGE = {
   0: 'Success'
 }
 
 ApiFeedbackable.default = function (failFallbackMessage?: ApiMessage, successFallbackMessage?: ApiMessage) {
-  return ApiFeedbackable(mergeApiMessage(failFallbackMessage, DEFAULT_API_FAIL_MESSAGE), successFallbackMessage)
+  const mergedFailMessage =
+    typeof failFallbackMessage === 'string'
+      ? mergeApiMessage(DEFAULT_API_FAIL_MESSAGE, failFallbackMessage)
+      : mergeApiMessage(failFallbackMessage, DEFAULT_API_FAIL_MESSAGE)
+  const mergedSuccessMessage =
+    typeof successFallbackMessage === 'string'
+      ? mergeApiMessage(DEFAULT_API_SUCCESS_MESSAGE, successFallbackMessage)
+      : successFallbackMessage
+  return ApiFeedbackable(mergedFailMessage, mergedSuccessMessage)
 }
 
 ApiFeedbackable.handle = function (fn: () => Promise<any>, failMessage?: ApiMessage, successMessage?: ApiMessage) {

@@ -13,7 +13,7 @@ import { ValidatorRule } from 'ant-design-vue/es/form/interface'
 import { Dayjs } from 'dayjs'
 
 // !!!! ATTENTION !!!!
-// every validator function should return a Promise, and `resolve()` when value is valid, `reject(new Error('error detail'))` when value is invalid
+// every validator function should return a Promise, and `resolve()` when value is valid, `reject('error detail')` when value is invalid
 // !!!! ATTENTION !!!!
 
 /**
