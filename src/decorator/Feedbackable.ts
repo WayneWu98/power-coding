@@ -46,7 +46,7 @@ ApiFeedbackable.default = function (failFallbackMessage?: ApiMessage, successFal
   const mergedSuccessMessage =
     typeof successFallbackMessage === 'string'
       ? mergeApiMessage(DEFAULT_API_SUCCESS_MESSAGE, successFallbackMessage)
-      : successFallbackMessage
+      : mergeApiMessage(successFallbackMessage, DEFAULT_API_SUCCESS_MESSAGE)
   return ApiFeedbackable(mergedFailMessage, mergedSuccessMessage)
 }
 
