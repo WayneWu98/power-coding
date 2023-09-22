@@ -67,13 +67,13 @@ export function wrapTransformConfig({
   onClone = returnSelf
 }: TransformConfig) {
   return (params: TransformFnParams) => {
-    const { value, type } = params
+    const { value, type, obj } = params
     if (type === TransformationType.CLASS_TO_PLAIN) {
-      return onSerialize(value)
+      return onSerialize(value, obj)
     }
     if (type === TransformationType.PLAIN_TO_CLASS) {
-      return onDeserialize(value)
+      return onDeserialize(value, obj)
     }
-    return onClone(value)
+    return onClone(value, obj)
   }
 }

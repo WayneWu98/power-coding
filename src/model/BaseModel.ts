@@ -145,6 +145,10 @@ export default class BaseModel {
   static fromModelPlain<T extends typeof BaseModel, V>(this: T, raw: V | V[]): InstanceType<T> | InstanceType<T>[] {
     return this.from(raw, { disableIgnore: true })
   }
+
+  static new<T extends typeof BaseModel, I extends InstanceType<T>>(this: T, raw: NonFunctionRecord<I>) {
+    return this.from(raw)
+  }
 }
 
 function shouldIgnoreSerialize(field?: Field) {

@@ -8,9 +8,9 @@ type ExcludedBuiltInProps = 'filtered' | 'sortOrder'
 interface TableColumn extends Omit<TableColumnType, ExcludedBuiltInProps> {}
 
 export interface TransformConfig {
-  onDeserialize?: (value: any) => any
-  onSerialize?: (value: any) => any
-  onClone?: (value: any) => any
+  onDeserialize?: (value: any, obj: any) => any
+  onSerialize?: (value: any, obj: any) => any
+  onClone?: (value: any, obj: any) => any
 }
 
 export interface Field {

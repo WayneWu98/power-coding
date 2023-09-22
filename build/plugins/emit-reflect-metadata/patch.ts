@@ -106,6 +106,10 @@ const injectMetaData = (node: ts.PropertyDeclaration, type: string = 'void 0', f
 
 const annotate = (node: ts.Node, checker: ts.TypeChecker) => {
   if (!ts.isClassDeclaration(node)) return node
+  const isDecoratedWithModel = node.modifiers?.some((modifier) => {
+    return ts.isDecorator(modifier) && modifier.expression.getFullText().startsWith('Model(')
+  })
+  if (!isDecoratedWithModel) return node
   const patchedMembers = []
   for (const member of node.members) {
     if (!ts.isPropertyDeclaration(member)) {
@@ -183,7 +187,13 @@ const createTransformer = (program: ts.Program) => {
   }
 }
 
-const hasClassDeclaration = (ast: ts.SourceFile) => ast.statements.some((statement) => ts.isClassDeclaration(statement))
+const hasClassDeclaration = (ast: ts.SourceFile) =>
+  ast.statements.some((statement) => {
+    if (!ts.isClassDeclaration(statement)) return false
+    return statement.modifiers?.some((modifier) => {
+      return ts.isDecorator(modifier) && modifier.expression.getFullText().startsWith('Model(')
+    })
+  })
 
 // cache program instance, and it will be used as the old program in next creation for performance optimization
 const PROGRAM_CACHE = new Map<string, ts.Program>()
