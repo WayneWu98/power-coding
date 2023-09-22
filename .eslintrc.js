@@ -3,7 +3,7 @@ const { globals } = require('./.eslintrc-auto-import.json')
 
 module.exports = defineConfig({
   globals,
-  ignorePatterns: ['**/*.d.ts'],
+  ignorePatterns: ['dist'],
   root: true,
   env: {
     browser: true,
