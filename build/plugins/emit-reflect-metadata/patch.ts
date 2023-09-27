@@ -91,12 +91,23 @@ const injectMetaData = (node: ts.PropertyDeclaration, type: string = 'void 0', f
     'design:fields',
     ts.factory.createArrayLiteralExpression(fields.map((member) => ts.factory.createStringLiteral(member)))
   )
+  const initializerDecorator = createMetaDataDecorator(
+    'design:initializer',
+    ts.factory.createArrowFunction(
+      void 0,
+      void 0,
+      void 0,
+      void 0,
+      ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+      ts.factory.createParenthesizedExpression(node.initializer ?? ts.factory.createIdentifier('void 0'))
+    )
+  )
   const afterLastDecoratorIndex = findLastIndexDecoratorOfModifiers(node.modifiers) + 1
   const headingModifiers = [...(node.modifiers ?? []).slice(0, afterLastDecoratorIndex)]
   const trailingModifiers = [...(node.modifiers ?? []).slice(afterLastDecoratorIndex)]
   return ts.factory.updatePropertyDeclaration(
     node,
-    [...headingModifiers, membersDecorator, typeDecorator, ...trailingModifiers],
+    [...headingModifiers, membersDecorator, typeDecorator, initializerDecorator, ...trailingModifiers],
     node.name,
     node.questionToken,
     node.type,

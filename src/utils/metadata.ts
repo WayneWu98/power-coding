@@ -11,3 +11,12 @@ export function getMemberFieldList<T extends ClassConstructor<any>>(
 ): string[] {
   return Reflect.getMetadata('design:fields', cls.prototype, field) ?? []
 }
+
+export function getInitializers<T extends ClassConstructor<any>>(cls: T): object {
+  const fields = getClassFieldList(cls) ?? []
+  return fields.reduce((initializers, field) => {
+    // @ts-ignore
+    initializers[field] = Reflect.getMetadata('design:initializer', cls.prototype, field)
+    return initializers
+  }, {} as object)
+}

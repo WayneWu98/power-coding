@@ -11,7 +11,7 @@ import { getField, getFields, Field, getShouldNestFields } from '@/decorator/Fie
 import { NamingCase, NAMING_CASE_MAP } from '@/utils/naming-case'
 import { Validator, getFieldValidators, getAllFieldValidators } from '@/decorator/Validator'
 import { DEFAULT_CLASS_NAMING_CASE } from '@/config'
-import { getMemberFieldList } from '@/utils/metadata'
+import { getInitializers, getMemberFieldList } from '@/utils/metadata'
 
 interface ToPlainOptions {
   disableIgnore?: boolean
@@ -113,7 +113,14 @@ export default class BaseModel {
     return getAllFieldValidators(this)
   }
   static default<T extends typeof BaseModel>(this: T) {
-    return new this() as InstanceType<T>
+    const initializers = getInitializers(this)
+    const raw = Object.entries(initializers).reduce((raw, [field, initializer]) => {
+      if (initializer === void 0) return raw
+      // @ts-ignore
+      raw[field] = typeof initializer === 'function' ? initializer() : initializer
+      return raw
+    }, {} as object)
+    return this.from(raw)
   }
   static getField<T extends typeof BaseModel>(this: T, field: keyof InstanceType<T>) {
     return getField(this, field)
