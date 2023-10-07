@@ -246,7 +246,7 @@ function traverseOnDeserialize(obj: any, cls: any, superCls: any, options?: Trav
     if (!options?.disableIgnore && shouldIgnoreDeserialize(field)) {
       continue
     }
-    if (field?.transform) {
+    if (field?.transform || rawValue instanceof BaseModel) {
       transformed[k] = rawValue
       continue
     }
