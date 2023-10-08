@@ -120,7 +120,7 @@ export default class BaseModel {
       raw[field] = typeof initializer === 'function' ? initializer() : initializer
       return raw
     }, {} as object)
-    return this.from(raw)
+    return this.from({}).merge(raw)
   }
   static getField<T extends typeof BaseModel>(this: T, field: keyof InstanceType<T>) {
     return getField(this, field)
