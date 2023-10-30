@@ -17,6 +17,7 @@ import {
 } from 'class-transformer'
 import * as dayjs from 'dayjs'
 import { TransformConfig } from '@/decorator/Field'
+import BaseModel from '@/model/BaseModel'
 
 /**
  * transform pure string to Dayjs, or Dayjs to string with forwarded format
@@ -46,14 +47,29 @@ export function dateTransformer(format: string) {
 export function typeTransformer(cls: ClassConstructor<unknown>) {
   return (params: TransformFnParams) => {
     const { value, type } = params
-    if (!value) {
+    if (
+      Object.is(value, null) ||
+      Object.is(value, NaN) ||
+      Object.is(value, void 0) ||
+      Object.is(Math.abs(value), Infinity)
+    ) {
       return value
     }
     if (type === TransformationType.CLASS_TO_PLAIN) {
+      if (value instanceof BaseModel) {
+        return value.toPlain()
+      }
       return instanceToPlain(value)
     }
     if (type === TransformationType.PLAIN_TO_CLASS) {
+      if (cls.prototype instanceof BaseModel) {
+        // @ts-ignore
+        return cls.from(value)
+      }
       return plainToInstance(cls, value)
+    }
+    if (value instanceof BaseModel) {
+      return value.clone()
     }
     return value
   }
