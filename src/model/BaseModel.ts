@@ -251,6 +251,10 @@ function traverseOnDeserialize(obj: any, cls: any, superCls: any, options?: Trav
       continue
     }
     const _superCls = cls?.prototype instanceof BaseModel ? cls : superCls
+    if ((Object.is(rawValue, null) || Object.is(rawValue, void 0)) && typeof field?.fallback === 'function') {
+      transformed[k] = field.fallback()
+      continue
+    }
     transformed[k] = traverseOnDeserialize(rawValue, fields[rawKey]?.type, _superCls, options)
   }
   const nested = new Set<string>()

@@ -33,6 +33,10 @@ export interface Field {
    * nest object key-values to current field when deserialization
    */
   nestOnDeserialize?: boolean
+  /**
+   * use default value when raw is null or undefined
+   */
+  fallback?: () => any
 }
 
 const FIELD_KEY = Symbol('FIELD')

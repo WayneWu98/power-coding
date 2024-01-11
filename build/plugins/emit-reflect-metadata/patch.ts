@@ -86,28 +86,45 @@ const findLastIndexDecoratorOfModifiers = (modifiers?: ArrayLike<ts.ModifierLike
 
 // inject type and fields metadata to class members, and set default type to be `undefined` if not specified
 const injectMetaData = (node: ts.PropertyDeclaration, type: string = 'void 0', fields: string[] = []) => {
-  const typeDecorator = createMetaDataDecorator('design:type', ts.factory.createIdentifier(type))
-  const membersDecorator = createMetaDataDecorator(
-    'design:fields',
-    ts.factory.createArrayLiteralExpression(fields.map((member) => ts.factory.createStringLiteral(member)))
-  )
-  const initializerDecorator = createMetaDataDecorator(
-    'design:initializer',
-    ts.factory.createArrowFunction(
-      void 0,
-      void 0,
-      void 0,
-      void 0,
-      ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-      ts.factory.createParenthesizedExpression(node.initializer ?? ts.factory.createIdentifier('void 0'))
-    )
-  )
+  let isDesignTypeExists = false
+  let isDesignFieldsExists = false
+  let isDesignInitializerExists = false
+  for (const modifier of node.modifiers ?? []) {
+    if (ts.isDecorator(modifier)) {
+      const text = modifier.getText()
+      isDesignTypeExists = isDesignTypeExists || text.startsWith("@Reflect.metadata('design:type'")
+      isDesignFieldsExists = isDesignFieldsExists || text.startsWith("@Reflect.metadata('design:fields'")
+      isDesignInitializerExists = isDesignInitializerExists || text.startsWith("@Reflect.metadata('design:initializer'")
+    }
+  }
+  const typeDecorator = isDesignTypeExists
+    ? void 0
+    : createMetaDataDecorator('design:type', ts.factory.createIdentifier(type))
+  const membersDecorator = isDesignFieldsExists
+    ? void 0
+    : createMetaDataDecorator(
+        'design:fields',
+        ts.factory.createArrayLiteralExpression(fields.map((member) => ts.factory.createStringLiteral(member)))
+      )
+  const initializerDecorator = isDesignInitializerExists
+    ? void 0
+    : createMetaDataDecorator(
+        'design:initializer',
+        ts.factory.createArrowFunction(
+          void 0,
+          void 0,
+          void 0,
+          void 0,
+          ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+          ts.factory.createParenthesizedExpression(node.initializer ?? ts.factory.createIdentifier('void 0'))
+        )
+      )
   const afterLastDecoratorIndex = findLastIndexDecoratorOfModifiers(node.modifiers) + 1
   const headingModifiers = [...(node.modifiers ?? []).slice(0, afterLastDecoratorIndex)]
   const trailingModifiers = [...(node.modifiers ?? []).slice(afterLastDecoratorIndex)]
   return ts.factory.updatePropertyDeclaration(
     node,
-    [...headingModifiers, membersDecorator, typeDecorator, initializerDecorator, ...trailingModifiers],
+    [...headingModifiers, membersDecorator, typeDecorator, initializerDecorator, ...trailingModifiers].filter(Boolean),
     node.name,
     node.questionToken,
     node.type,
