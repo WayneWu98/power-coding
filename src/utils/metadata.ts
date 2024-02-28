@@ -1,18 +1,18 @@
-import { ClassConstructor } from 'class-transformer'
+import { SerdeableClass } from '@/model/Serde'
 import 'reflect-metadata'
 
-export function getClassFieldList<T extends ClassConstructor<any>>(cls: T): (keyof InstanceType<T>)[] {
+export function getClassFieldList<T extends SerdeableClass>(cls: T): (keyof InstanceType<T>)[] {
   return Reflect.getMetadata('design:fields', cls) ?? []
 }
 
-export function getMemberFieldList<T extends ClassConstructor<any>>(
+export function getMemberFieldList<T extends SerdeableClass>(
   cls: T,
   field: Exclude<keyof InstanceType<T>, number>
 ): string[] {
   return Reflect.getMetadata('design:fields', cls.prototype, field) ?? []
 }
 
-export function getInitializers<T extends ClassConstructor<any>>(cls: T): object {
+export function getInitializers<T extends SerdeableClass>(cls: T): object {
   const fields = getClassFieldList(cls) ?? []
   return fields.reduce((initializers, field) => {
     // @ts-ignore

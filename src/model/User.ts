@@ -1,5 +1,5 @@
 import Model from '@/decorator/Model'
-import BaseModel from './BaseModel'
+import Serde from './Serde'
 import Derive from '@/decorator/Derive'
 import CRUD, { CRUDDeriver } from './behavior/CRUD'
 import Entity from './behavior/Entity'
@@ -19,7 +19,7 @@ import { ApiFeedbackable } from '@/decorator/Feedbackable'
 
 @Model({})
 @Derive(CRUDDeriver('api/users'))
-export class User extends BaseModel implements Entity<number> {
+export class User implements Entity<number> {
   @Field({ name: '用户ID', tableColumn: { align: 'center', sorter: true, customFilterDropdown: true } })
   id: number
   @Field({ name: '用户名', tableColumn: { align: 'center' } })
@@ -36,10 +36,10 @@ export class User extends BaseModel implements Entity<number> {
   }
 }
 
-export interface User extends CRUD<User> {}
+export interface User extends Serde, CRUD<User> {}
 
 @Model()
-export class UserAuth extends BaseModel {
+export class UserAuth {
   @Field({ name: '邮箱', description: '邮箱地址' })
   @Validator(Required('请输入邮箱'), Pattern(/^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/, '请输入正确的邮箱地址'))
   email: string
@@ -58,12 +58,14 @@ export class UserAuth extends BaseModel {
   }
 }
 
+export interface UserAuth extends Serde {}
+
 @Model()
-export class UsersQuery extends BaseModel {
+export class UsersQuery {
   @Field({ flatOnSerialize: true })
-  pagination: Pagination = Pagination.default()
+  pagination: Pagination = Serde.default(Pagination)
   @Field({ flatOnSerialize: true })
-  sorter: Sorter = Sorter.default()
+  sorter: Sorter = Serde.default(Sorter)
   @Field({ flatOnSerialize: true, transform: { onSerialize: (value) => ({ id: value.id?.[0] }) } })
   filters: Record<string, any> = {}
   @Field({
@@ -80,24 +82,26 @@ export class UsersQuery extends BaseModel {
   dateRange: [Dayjs, Dayjs] = [dayjs(), dayjs()]
 }
 
+export interface UsersQuery extends Serde {}
+
 @Model()
 @Derive(CRUDDeriver('api/users', ['get']), PageableListDeriver({ itemType: User }))
-export class PageableUsers extends BaseModel implements Query<UsersQuery> {
+export class PageableUsers implements Query<UsersQuery> {
   // query only for serialization as request params
   @Field({ ignore: { onDeserialize: true } })
-  query: UsersQuery = UsersQuery.default()
+  query: UsersQuery = Serde.default(UsersQuery)
 }
 
 // for type check, we should declare a interface named as same as the class's, and extends the behavior class
-export interface PageableUsers extends CRUD<PageableUsers>, PageableList<User> {}
+export interface PageableUsers extends CRUD<PageableUsers>, PageableList<User>, Serde {}
 
 @Model()
 @Derive(CRUDDeriver('api/users', ['get']), ScrollableListDeriver({ itemType: User }))
-export class ScrollableUsers extends BaseModel implements Query<UsersQuery> {
+export class ScrollableUsers implements Query<UsersQuery> {
   // query only for serialization as request params
   @Field({ ignore: { onDeserialize: true } })
-  query: UsersQuery = UsersQuery.default()
+  query: UsersQuery = Serde.default(UsersQuery)
 }
 
 // for type check, we should declare a interface named as same as the class's, and extends the behavior class
-export interface ScrollableUsers extends CRUD<ScrollableUsers>, ScrollableList<User> {}
+export interface ScrollableUsers extends Serde, CRUD<ScrollableUsers>, ScrollableList<User> {}

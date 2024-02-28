@@ -1,10 +1,10 @@
-import BaseModel from '@/model/BaseModel'
+import { type SerdeableClass } from '@/model/Serde'
 
-export interface Deriver<T extends typeof BaseModel> {
+export interface Deriver<T extends SerdeableClass> {
   (cls: T): void | T
 }
 
-export default function <T extends typeof BaseModel>(...derivers: Deriver<T>[]) {
+export default function <T extends SerdeableClass>(...derivers: Deriver<T>[]) {
   return function (cls: T) {
     for (const deriver of derivers) {
       cls = deriver(cls) ?? cls

@@ -1,8 +1,10 @@
 import Model from '@/decorator/Model'
-import BaseModel from './BaseModel'
+import Serde from './Serde'
 
 @Model()
-export default class Pagination extends BaseModel {
+export default class Pagination {
   page: number = 1
   per: number = 10
 }
+
+export default interface Pagination extends Serde {}

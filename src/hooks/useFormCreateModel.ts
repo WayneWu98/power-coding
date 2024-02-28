@@ -1,7 +1,7 @@
-import BaseModel from '@/model/BaseModel'
+import Serde from '@/model/Serde'
 import { MaybeRefOrGetter } from 'vue'
 
-export default function useFormCreateModel<T extends BaseModel>(model: MaybeRefOrGetter<T>) {
+export default function useFormCreateModel<T extends Serde>(model: MaybeRefOrGetter<T>) {
   const _model = ref<T>()
   watch(
     () => toValue(model),
@@ -14,7 +14,7 @@ export default function useFormCreateModel<T extends BaseModel>(model: MaybeRefO
     },
     set(val) {
       // @ts-ignore
-      _model.value = Reflect.getPrototypeOf(_model.value!).constructor.from(val!)
+      _model.value = Serde.from(Reflect.getPrototypeOf(_model.value!).constructor, val!)
     }
   })
   return boundedModel

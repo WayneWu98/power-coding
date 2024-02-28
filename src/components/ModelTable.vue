@@ -27,8 +27,8 @@
   </a-table>
 </template>
 
-<script setup lang="ts" generic="T extends BaseModelConstructor, P extends (keyof InstanceType<T>)[]">
-import { BaseModelConstructor } from '@/model/BaseModel'
+<script setup lang="ts" generic="T extends SerdeableClass, P extends (keyof InstanceType<T>)[]">
+import Serde, { SerdeableClass } from '@/model/Serde'
 import Sorter from '@/model/Sorter'
 import Pagination from '@/model/Pagination'
 import { Table as ATable, TableColumnType, TableProps } from 'ant-design-vue'
@@ -125,7 +125,7 @@ const pagination = computed(() => {
 
 const columns = computed(() => {
   return props.properties.map((prop) => {
-    const field = props.model.getField(prop) ?? {}
+    const field = Serde.getField(props.model, prop) ?? {}
     const column = field.tableColumn ?? {}
     const sorter = props.sorter
     let sortOrder = null
@@ -145,11 +145,11 @@ const columns = computed(() => {
 
 const onChange: AcceptedTableProps['onChange'] = (pagination, filters, sorter, extra) => {
   if (Array.isArray(sorter)) sorter = sorter[0]
-  const _sorter = Sorter.default().merge({ orderBy: sorter.order && sorter.columnKey, order: sorter.order })
+  const _sorter = Serde.default(Sorter).merge({ orderBy: sorter.order && sorter.columnKey, order: sorter.order })
   emit('update:sorter', _sorter)
   emit('sort', _sorter)
 
-  const _pagination = Pagination.default().merge({ page: pagination.current, per: pagination.pageSize })
+  const _pagination = Serde.default(Pagination).merge({ page: pagination.current, per: pagination.pageSize })
   emit('update:pagination', _pagination)
   emit('paginate', _pagination)
 
@@ -159,3 +159,4 @@ const onChange: AcceptedTableProps['onChange'] = (pagination, filters, sorter, e
   emit('change', pagination, filters, sorter, extra)
 }
 </script>
+@/model/Serde

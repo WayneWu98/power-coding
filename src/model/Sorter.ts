@@ -1,9 +1,11 @@
 import Model from '@/decorator/Model'
-import BaseModel from './BaseModel'
+import Serde from './Serde'
 import { SortOrder } from 'ant-design-vue/lib/table/interface'
 
 @Model()
-export default class Sorter extends BaseModel {
+export default class Sorter {
   orderBy: string
   order: SortOrder
 }
+
+export default interface Sorter extends Serde {}

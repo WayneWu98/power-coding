@@ -1,4 +1,4 @@
-import BaseModel from '@/model/BaseModel'
+import Serde from '@/model/Serde'
 import { message } from 'ant-design-vue'
 import { ClassConstructor } from 'class-transformer'
 import 'reflect-metadata'
@@ -49,7 +49,7 @@ export function Validatable() {
   return function (
     _target: object,
     _key: string | symbol,
-    descriptor: TypedPropertyDescriptor<(this: BaseModel, ...args: any[]) => Promise<any>>
+    descriptor: TypedPropertyDescriptor<(this: Serde, ...args: any[]) => Promise<any>>
   ) {
     const originalMethod = descriptor.value!
     descriptor.value = async function (...args: any[]) {

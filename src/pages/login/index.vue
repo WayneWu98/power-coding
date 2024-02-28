@@ -12,10 +12,11 @@ import { UserAuth } from '@/model/User'
 import { adaptValidator } from '@/utils/validator'
 import { Rule, Options } from '@form-create/ant-design-vue'
 import useUserStore from '@/store/user'
+import Serde from '@/model/Serde'
 
 const router = useRouter()
 const userStore = useUserStore()
-const userAuth = useFormCreateModel(UserAuth.default().merge({ email: 'admin@admin.com', password: '123456' }))
+const userAuth = useFormCreateModel(Serde.default(UserAuth).merge({ email: 'admin@admin.com', password: '123456' }))
 
 watch(
   () => userStore.user,
@@ -29,7 +30,7 @@ const rule: Rule[] = [
   {
     type: 'input',
     field: 'email',
-    title: UserAuth.getField('email').name,
+    title: Serde.getField(UserAuth, 'email').name,
     validate: [
       {
         validator: adaptValidator(() => userAuth.value.validate('email'))
@@ -39,7 +40,7 @@ const rule: Rule[] = [
   {
     type: 'input',
     field: 'password',
-    title: UserAuth.getField('password').name,
+    title: Serde.getField(UserAuth, 'password').name,
     validate: [{ validator: adaptValidator(() => userAuth.value.validate('password')) }]
   }
 ]
@@ -49,3 +50,4 @@ const options: Options = {
   }
 }
 </script>
+@/model/Serde

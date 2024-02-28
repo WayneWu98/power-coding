@@ -17,7 +17,7 @@ import {
 } from 'class-transformer'
 import * as dayjs from 'dayjs'
 import { TransformConfig } from '@/decorator/Field'
-import BaseModel from '@/model/BaseModel'
+import Serde, { isSerdeable } from '@/model/Serde'
 
 /**
  * transform pure string to Dayjs, or Dayjs to string with forwarded format
@@ -56,19 +56,19 @@ export function typeTransformer(cls: ClassConstructor<unknown>) {
       return value
     }
     if (type === TransformationType.CLASS_TO_PLAIN) {
-      if (value instanceof BaseModel) {
+      if (value instanceof Serde) {
         return value.toPlain()
       }
       return instanceToPlain(value)
     }
     if (type === TransformationType.PLAIN_TO_CLASS) {
-      if (cls.prototype instanceof BaseModel) {
+      if (isSerdeable(cls)) {
         // @ts-ignore
-        return cls.from(value)
+        return Serde.from(cls, value)
       }
       return plainToInstance(cls, value)
     }
-    if (value instanceof BaseModel) {
+    if (value instanceof Serde) {
       return value.clone()
     }
     return value

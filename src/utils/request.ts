@@ -1,5 +1,5 @@
 import Axios, { AxiosRequestConfig } from 'axios'
-import BaseModel from '@/model/BaseModel'
+import Serde, { SerdeableClass } from '@/model/Serde'
 import * as storage from '@/utils/storage'
 import useUserStore from '@/store/user'
 import ApiResponse from '@/model/ApiResponse'
@@ -10,10 +10,10 @@ const request = Axios.create({
 })
 
 request.interceptors.request.use((config) => {
-  if (config.params instanceof BaseModel) {
+  if (config.params instanceof Serde) {
     config.params = config.params.toPlain()
   }
-  if (config.data instanceof BaseModel) {
+  if (config.data instanceof Serde) {
     config.data = config.data.toPlain()
   }
   config.headers['Authorization'] = storage.getItem('token')
@@ -45,13 +45,13 @@ export enum DataMethod {
 }
 
 function createModelDataRequest(method: DataMethod) {
-  return function <T extends typeof BaseModel>(url: string, data: any, config: AxiosRequestConfig = {}, cls: T) {
+  return function <T extends SerdeableClass>(url: string, data: any, config: AxiosRequestConfig = {}, cls: T) {
     return request<any, ApiResponse<Object>>({
       url,
       method,
       data,
       ...config
-    }).then((res) => cls.from(res.data))
+    }).then((res) => Serde.from(cls, res.data))
   }
 }
 
@@ -61,13 +61,13 @@ export enum ParamsMethod {
 }
 
 function createModelParamsRequest(method: ParamsMethod) {
-  return function <T extends typeof BaseModel>(url: string, params: any, config: AxiosRequestConfig = {}, cls: T) {
+  return function <T extends SerdeableClass>(url: string, params: any, config: AxiosRequestConfig = {}, cls: T) {
     return request<any, ApiResponse<Object>>({
       url,
       method,
       params,
       ...config
-    }).then((res) => cls.from(res.data))
+    }).then((res) => Serde.from(cls, res.data))
   }
 }
 

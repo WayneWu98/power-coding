@@ -40,13 +40,15 @@
 <script setup lang="ts">
 import { PageableUsers, ScrollableUsers, User } from '@/model/User'
 import ModelTable from '@/components/ModelTable.vue'
+import Serde from '@/model/BaseModel'
 
 const selectedRowKeys = ref([] as (string | number)[])
-const pageableUsers = ref(PageableUsers.default())
+const pageableUsers = ref(Serde.default(PageableUsers))
 const gePageableUsersData = () => pageableUsers.value.reload()
 pageableUsers.value.refresh()
 
-const scrollableUsers = ref(ScrollableUsers.default())
+const scrollableUsers = ref(Serde.default(ScrollableUsers))
 const getScrollableUsersData = () => scrollableUsers.value.loadMore()
 scrollableUsers.value.refresh()
 </script>
+@/model/Serde

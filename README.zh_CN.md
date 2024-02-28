@@ -99,10 +99,12 @@ interface User extends CRUD<User> {}
 ```ts
 // bad
 @Model()
-class User extends BaseModel {
+class User {
   id: number
   query: Record<string, any>
 }
+
+interface User extends Serdeable {}
 
 // good
 @Model()
@@ -124,7 +126,7 @@ class User extends BaseModel {
 
 @Model()
 class UsersQuery extends BaseModel {
-  pagination: Pagination = Pagination.default()
+  pagination: Pagination = Serde.default(Pagination)
 }
 
 @Model()
@@ -133,12 +135,12 @@ class Users extends BaseModel implements Query<UsersQuery> {
   // query only for serialization as request params
   @Field({ ignore: { onDeserialize: true } })
   // PageableListDeriver acquire model should extend Query<{ pagination: Pagination }> and CRUD<{ items: any[] }>
-  query: UsersQuery = UsersQuery.default()
+  query: UsersQuery = Serde.default(UsersQuery)
 }
 
 interface Users extends CRUD<Users>, PageableList<User> {}
 
-const users = Users.default()
+const users = Serde.default(Users)
 users.refresh()
 users.next()
 users.prev()

@@ -6,7 +6,7 @@
  */
 
 import { ClassConstructor } from 'class-transformer'
-import BaseModel from '../BaseModel'
+import Serde, { SerdeableClass } from '../Serde'
 import Pagination from '../Pagination'
 import CRUD from './CRUD'
 import Query from './Query'
@@ -41,20 +41,20 @@ interface DeriverOptions<R> {
  *
  * ```typescript
  * class UsersQuery extends BaseModel {
- *  pagination: Pagination = Pagination.default()
+ *  pagination: Pagination = Serde.default(Pagination)
  * }
  *
  * @Derive(CRUDDeriver('api/users'), ScrollableListDeriver(User))
  * class Users extends BaseModel implements Entity {
- *   query: Query<{ pagination: Pagination }> = UsersQuery.default()
+ *   query: Query<{ pagination: Pagination }> = Serde.default(UsersQuery)
  * }
  * interface Users extends CRUD<Users>, ScrollableList<User> {}
  * ```
  */
 export function ScrollableListDeriver<
-  T extends typeof BaseModel &
+  T extends SerdeableClass &
     ClassConstructor<ScrollableList<any> & CRUD<ScrollableList<R>> & Query<{ pagination: Pagination }>>,
-  R extends BaseModel
+  R extends Serde
 >({ itemType, extras = [], listFieldName = 'items' }: DeriverOptions<R>) {
   return function (cls: T) {
     Field({ type: itemType, fieldName: listFieldName })(cls.prototype, 'items')

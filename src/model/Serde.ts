@@ -2,10 +2,10 @@
  * This module provides the base class for all models,
  * it provides some useful methods to manipulate models.
  *
- * Every model should inherit BaseModel.
+ * Every model should decorate with @Serde.
  */
 
-import { instanceToPlain, plainToInstance } from 'class-transformer'
+import { ClassConstructor, instanceToPlain, plainToInstance } from 'class-transformer'
 import { getModel, Model } from '@/decorator/Model'
 import { getField, getFields, Field, getShouldNestFields } from '@/decorator/Field'
 import { NamingCase, NAMING_CASE_MAP } from '@/utils/naming-case'
@@ -20,16 +20,21 @@ interface FromOptions {
   disableIgnore?: boolean
 }
 
+export const serdeable = Symbol()
+
 /**
  * Every model should inherit this class.
  */
-export default class BaseModel {
+export default class Serde {
   /**
    * instanceToInstance will not convert naming case, call our implementation instead.
    */
   clone() {
-    const model = Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel
-    return model.fromModelPlain(this.toModelPlain()) as typeof this
+    const serdeable = Reflect.getPrototypeOf(this)!.constructor as SerdeableClass
+    return Serde.clone(serdeable, this)
+  }
+  static clone<T extends SerdeableClass>(serdeable: T, instance: InstanceType<T>) {
+    return Serde.fromModelPlain(serdeable, instance.toModelPlain()) as InstanceType<T>
   }
   /**
    * merge the specified fields of target to this in-place, existing properties will be overwritten
@@ -58,8 +63,11 @@ export default class BaseModel {
    * Convert current model to plain object.
    */
   toPlain(options?: ToPlainOptions): object {
-    const cls = Reflect.getPrototypeOf(this)!.constructor
-    return traverseOnSerialize(instanceToPlain(this), cls, cls, options)
+    return Serde.toPlain(this, options)
+  }
+  static toPlain<T extends SerdeableClass>(instance: InstanceType<T>, options?: ToPlainOptions) {
+    const cls = Reflect.getPrototypeOf(instance)!.constructor
+    return traverseOnSerialize(instanceToPlain(instance), cls, cls, options)
   }
   /**
    * there are some differences to `toPlain`:
@@ -69,25 +77,37 @@ export default class BaseModel {
    * For this lib, it is only used in `clone` method.
    */
   toModelPlain() {
-    return this.toPlain({ disableIgnore: true })
+    return Serde.toModelPlain(this)
+  }
+
+  static toModelPlain<T extends SerdeableClass>(instance: InstanceType<T>) {
+    return Serde.toPlain(instance, { disableIgnore: true })
   }
   /**
    * Validate current model **by shallow**, return a list of errors when validate all fields, or a single error message when validate a specific field, empty list or undefined means no error.
    *
    * Child models **will not** be validated automatically, you should do it yourself.
    */
-  validate<T extends BaseModel>(this: T, field: keyof T): Promise<string>
-  validate<T extends BaseModel>(this: T): Promise<{ field: keyof T; message: string }[]>
-  async validate<T extends BaseModel>(this: T, field?: keyof T) {
-    const model = Reflect.getPrototypeOf(this)!.constructor as typeof BaseModel
-    const validators = {} as Record<keyof typeof this, Validator[]>
+  validate<T extends Serde>(this: T, field: keyof T): Promise<string>
+  validate<T extends Serde>(this: T): Promise<{ field: keyof T; message: string }[]>
+  async validate<T extends Serde>(this: T, field?: keyof T) {
+    return Serde.validate(this, field as keyof Serde) as any
+  }
+
+  static validate<T extends SerdeableClass>(instance: InstanceType<T>, field: keyof InstanceType<T>): Promise<string>
+  static validate<T extends SerdeableClass>(
+    instance: InstanceType<T>
+  ): Promise<{ field: keyof InstanceType<T>; message: string }[]>
+  static async validate<T extends SerdeableClass>(instance: InstanceType<T>, field?: keyof InstanceType<T>) {
+    const serdeable = Reflect.getPrototypeOf(instance)!.constructor as SerdeableClass
+    const validators = {} as Record<keyof typeof instance, Validator[]>
     if (field) {
       validators[field] ??= []
       // @ts-ignore
-      validators[field].push(...BaseModel.getFieldValidators.call(model, field))
+      validators[field].push(...Serde.getFieldValidators(serdeable, field))
       // Promise.allSettled(validators.map((validator) => validator(this[field], this)))
     } else {
-      for (const [k, v] of Object.entries(BaseModel.getAllFieldValidators.call(model))) {
+      for (const [k, v] of Object.entries(Serde.getAllFieldValidators(serdeable))) {
         // @ts-ignore
         validators[k] = v
       }
@@ -95,7 +115,9 @@ export default class BaseModel {
     const errors = [] as { field: keyof T; message: string }[]
     await Promise.all(
       Object.entries(validators).map(([field, validators]) => {
-        return Promise.all(validators.map((validator) => validator(this[field as keyof T], this))).catch(
+        return Promise.all(
+          validators.map((validator) => validator(instance[field as keyof InstanceType<T>], this))
+        ).catch(
           // @ts-ignore
           (message: string) => errors.push({ field, message })
         )
@@ -106,56 +128,56 @@ export default class BaseModel {
     }
     return errors
   }
-  static getFieldValidators<T extends typeof BaseModel>(this: T, field: keyof InstanceType<T>) {
-    return getFieldValidators(this, field)
+  static getFieldValidators<T extends SerdeableClass>(serdeable: T, field: keyof InstanceType<T>) {
+    return getFieldValidators(serdeable, field)
   }
-  static getAllFieldValidators<T extends typeof BaseModel>(this: T) {
-    return getAllFieldValidators(this)
+  static getAllFieldValidators<T extends SerdeableClass>(serdeable: T) {
+    return getAllFieldValidators(serdeable)
   }
-  static default<T extends typeof BaseModel>(this: T) {
-    const initializers = getInitializers(this)
+  static default<T extends SerdeableClass>(serdeable: T) {
+    const initializers = getInitializers(serdeable)
     const raw = Object.entries(initializers).reduce((raw, [field, initializer]) => {
       if (initializer === void 0) return raw
       // @ts-ignore
       raw[field] = typeof initializer === 'function' ? initializer() : initializer
       return raw
     }, {} as object)
-    return this.from({}).merge(raw)
+    return Serde.from(serdeable, {}).merge(raw)
   }
-  static getField<T extends typeof BaseModel>(this: T, field: keyof InstanceType<T>) {
-    return getField(this, field)
+  static getField<T extends SerdeableClass>(serdeable: T, field: keyof InstanceType<T>) {
+    return getField(serdeable, field)
   }
-  static getFields<T extends typeof BaseModel>(this: T) {
-    return getFields(this)
+  static getFields<T extends SerdeableClass>(serdeable: T) {
+    return getFields(serdeable)
   }
-  static getModel() {
-    return getModel(this)
+  static getModel<T extends SerdeableClass>(serdeable: T) {
+    return getModel(serdeable)
   }
-  static from<T extends typeof BaseModel, V>(this: T, raw: V, options?: FromOptions): InstanceType<T>
-  static from<T extends typeof BaseModel, V>(this: T, raw: V[], options?: FromOptions): InstanceType<T>[]
-  static from<T extends typeof BaseModel, V>(
-    this: T,
+  static from<T extends SerdeableClass, V>(serdeable: T, raw: V, options?: FromOptions): InstanceType<T>
+  static from<T extends SerdeableClass, V>(serdeable: T, raw: V[], options?: FromOptions): InstanceType<T>[]
+  static from<T extends SerdeableClass, V>(
+    serdeable: T,
     raw: V | V[],
     options?: FromOptions
   ): InstanceType<T> | InstanceType<T>[] {
-    if (raw instanceof BaseModel) {
+    if (raw instanceof Serde) {
       raw = raw.toPlain() as V
     } else if (typeof raw === 'string') {
       raw = JSON.parse(raw)
     }
     // @ts-ignore
-    return plainToInstance(this, traverseOnDeserialize(raw, this, this, options))
+    return plainToInstance(serdeable, traverseOnDeserialize(raw, serdeable, serdeable, options))
   }
 
-  static fromModelPlain<T extends typeof BaseModel, V>(this: T, raw: V): InstanceType<T>
-  static fromModelPlain<T extends typeof BaseModel, V>(this: T, raw: V[]): InstanceType<T>[]
-  static fromModelPlain<T extends typeof BaseModel, V>(this: T, raw: V | V[]): InstanceType<T> | InstanceType<T>[] {
-    return this.from(raw, { disableIgnore: true })
+  static fromModelPlain<T extends SerdeableClass, V>(serdeable: T, raw: V): InstanceType<T>
+  static fromModelPlain<T extends SerdeableClass, V>(serdeable: T, raw: V[]): InstanceType<T>[]
+  static fromModelPlain<T extends SerdeableClass, V>(serdeable: T, raw: V | V[]): InstanceType<T> | InstanceType<T>[] {
+    return Serde.from(serdeable, raw, { disableIgnore: true })
   }
+}
 
-  static new<T extends typeof BaseModel, I extends InstanceType<T>>(this: T, raw: NonFunctionRecord<I>) {
-    return this.from(raw)
-  }
+export function isSerdeable(cls: Function): cls is SerdeConstructor {
+  return cls.prototype[serdeable]
 }
 
 function shouldIgnoreSerialize(field?: Field) {
@@ -182,8 +204,8 @@ function traverseOnSerialize(obj: any, cls: any, superCls: any, options?: Traver
     return obj.map((item) => traverseOnSerialize(item, cls, superCls, options))
   }
   const transformed: Record<keyof any, any> = {}
-  const model: Model = (cls?.getModel?.() ?? superCls?.getModel?.() ?? {}) as Model
-  const fields = cls?.getFields?.() ?? {}
+  const model: Model = (Serde.getModel(cls) ?? Serde.getModel(superCls) ?? {}) as Model
+  const fields = Serde.getFields(cls) ?? {}
   const arrayedFields = Object.values(fields) as Field[]
   for (const [rawKey, rawValue] of Object.entries(obj)) {
     let key = rawKey
@@ -197,7 +219,7 @@ function traverseOnSerialize(obj: any, cls: any, superCls: any, options?: Traver
     if (field?.transform) {
       transformed[key] = rawValue
     } else {
-      const _superCls = cls?.prototype instanceof BaseModel ? cls : superCls
+      const _superCls = cls?.prototype instanceof Serde ? cls : superCls
       transformed[key] = traverseOnSerialize(rawValue, fields[rawKey]?.type, _superCls, options)
     }
     if (field?.flatOnSerialize) {
@@ -232,8 +254,8 @@ function traverseOnDeserialize(obj: any, cls: any, superCls: any, options?: Trav
     return obj.map((item) => traverseOnDeserialize(item, cls, superCls, options))
   }
   const transformed: Record<keyof any, any> = {}
-  const model = (cls?.getModel?.() ?? superCls?.getModel?.() ?? {}) as Model
-  const fields = cls?.getFields?.() ?? {}
+  const model = (Serde.getModel(cls) ?? Serde.getModel(superCls) ?? {}) as Model
+  const fields = Serde.getFields(cls) ?? {}
   const arrayedFields = Object.values(fields) as Field[]
   for (const [rawKey, rawValue] of Object.entries(obj)) {
     let k = rawKey
@@ -246,11 +268,12 @@ function traverseOnDeserialize(obj: any, cls: any, superCls: any, options?: Trav
     if (!options?.disableIgnore && shouldIgnoreDeserialize(field)) {
       continue
     }
-    if (field?.transform || rawValue instanceof BaseModel) {
+    // @ts-ignore
+    if (field?.transform || isSerdeable(rawValue?.constructor)) {
       transformed[k] = rawValue
       continue
     }
-    const _superCls = cls?.prototype instanceof BaseModel ? cls : superCls
+    const _superCls = isSerdeable(cls) ? cls : superCls
     if ((Object.is(rawValue, null) || Object.is(rawValue, void 0)) && typeof field?.fallback === 'function') {
       transformed[k] = field.fallback()
       continue
@@ -277,4 +300,5 @@ function traverseOnDeserialize(obj: any, cls: any, superCls: any, options?: Trav
   return transformed
 }
 
-export type BaseModelConstructor = typeof BaseModel
+export type SerdeConstructor = typeof Serde
+export type SerdeableClass = ClassConstructor<Serde>

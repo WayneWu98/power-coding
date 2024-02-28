@@ -3,8 +3,7 @@
  * and provide a deriver function to implement this behavior, it should be used with `@Derive` decorator.
  */
 
-import { ClassConstructor } from 'class-transformer'
-import BaseModel from '../BaseModel'
+import Serde, { SerdeableClass } from '../Serde'
 import { requestModel } from '@/utils/request'
 import { ApiFeedbackable, DEFAULT_API_FAIL_MESSAGE } from '@/decorator/Feedbackable'
 import { message } from 'ant-design-vue'
@@ -50,7 +49,7 @@ interface DeriverOptions {
  * interface User extends CRUD<User> {}
  * ```
  */
-export function CRUDDeriver<T extends typeof BaseModel & ClassConstructor<CRUD<InstanceType<T>>>>(
+export function CRUDDeriver<T extends SerdeableClass>(
   endpoint: EndPoint<InstanceType<T>>,
   actions: Action[] = ['get', 'create', 'update', 'delete'],
   { validatable, feedbackable }: DeriverOptions = {}
@@ -69,7 +68,7 @@ export function CRUDDeriver<T extends typeof BaseModel & ClassConstructor<CRUD<I
         return endpoint(action, model)
       }
     }
-    async function handle(this: BaseModel, fn: () => Promise<any>) {
+    async function handle(this: Serde, fn: () => Promise<any>) {
       if (validatable) {
         await this.validate().then((errors) => {
           if (errors.length) {
