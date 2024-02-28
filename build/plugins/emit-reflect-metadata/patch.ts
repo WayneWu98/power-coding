@@ -134,10 +134,10 @@ const injectMetaData = (node: ts.PropertyDeclaration, type: string = 'void 0', f
 
 const annotate = (node: ts.Node, checker: ts.TypeChecker) => {
   if (!ts.isClassDeclaration(node)) return node
-  const isDecoratedWithModel = node.modifiers?.some((modifier) => {
-    return ts.isDecorator(modifier) && modifier.expression.getFullText().startsWith('Model(')
+  const isDecoratedWithSerdeable = node.modifiers?.some((modifier) => {
+    return ts.isDecorator(modifier) && modifier.expression.getFullText().startsWith('Serdeable(')
   })
-  if (!isDecoratedWithModel) return node
+  if (!isDecoratedWithSerdeable) return node
   const patchedMembers = []
   for (const member of node.members) {
     if (!ts.isPropertyDeclaration(member)) {
@@ -219,7 +219,7 @@ const hasClassDeclaration = (ast: ts.SourceFile) =>
   ast.statements.some((statement) => {
     if (!ts.isClassDeclaration(statement)) return false
     return statement.modifiers?.some((modifier) => {
-      return ts.isDecorator(modifier) && modifier.expression.getFullText().startsWith('Model(')
+      return ts.isDecorator(modifier) && modifier.expression.getFullText().startsWith('Serdeable(')
     })
   })
 

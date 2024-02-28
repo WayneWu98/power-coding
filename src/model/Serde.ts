@@ -6,7 +6,7 @@
  */
 
 import { ClassConstructor, instanceToPlain, plainToInstance } from 'class-transformer'
-import { getModel, Model } from '@/decorator/Model'
+import { getSerdeableConfig, SerdeableConfig } from '@/decorator/Serdeable'
 import { getField, getFields, Field, getShouldNestFields } from '@/decorator/Field'
 import { NamingCase, NAMING_CASE_MAP } from '@/utils/naming-case'
 import { Validator, getFieldValidators, getAllFieldValidators } from '@/decorator/Validator'
@@ -150,8 +150,8 @@ export default class Serde {
   static getFields<T extends SerdeableClass>(serdeable: T) {
     return getFields(serdeable)
   }
-  static getModel<T extends SerdeableClass>(serdeable: T) {
-    return getModel(serdeable)
+  static getSerdeableConfig<T extends SerdeableClass>(serdeable: T) {
+    return getSerdeableConfig(serdeable)
   }
   static from<T extends SerdeableClass, V>(serdeable: T, raw: V, options?: FromOptions): InstanceType<T>
   static from<T extends SerdeableClass, V>(serdeable: T, raw: V[], options?: FromOptions): InstanceType<T>[]
@@ -204,7 +204,9 @@ function traverseOnSerialize(obj: any, cls: any, superCls: any, options?: Traver
     return obj.map((item) => traverseOnSerialize(item, cls, superCls, options))
   }
   const transformed: Record<keyof any, any> = {}
-  const model: Model = (Serde.getModel(cls) ?? Serde.getModel(superCls) ?? {}) as Model
+  const model: SerdeableConfig = (Serde.getSerdeableConfig(cls) ??
+    Serde.getSerdeableConfig(superCls) ??
+    {}) as SerdeableConfig
   const fields = Serde.getFields(cls) ?? {}
   const arrayedFields = Object.values(fields) as Field[]
   for (const [rawKey, rawValue] of Object.entries(obj)) {
@@ -254,7 +256,7 @@ function traverseOnDeserialize(obj: any, cls: any, superCls: any, options?: Trav
     return obj.map((item) => traverseOnDeserialize(item, cls, superCls, options))
   }
   const transformed: Record<keyof any, any> = {}
-  const model = (Serde.getModel(cls) ?? Serde.getModel(superCls) ?? {}) as Model
+  const model = (Serde.getSerdeableConfig(cls) ?? Serde.getSerdeableConfig(superCls) ?? {}) as SerdeableConfig
   const fields = Serde.getFields(cls) ?? {}
   const arrayedFields = Object.values(fields) as Field[]
   for (const [rawKey, rawValue] of Object.entries(obj)) {

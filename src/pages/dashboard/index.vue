@@ -40,7 +40,7 @@
 <script setup lang="ts">
 import { PageableUsers, ScrollableUsers, User } from '@/model/User'
 import ModelTable from '@/components/ModelTable.vue'
-import Serde from '@/model/BaseModel'
+import Serde from '@/model/Serde'
 
 const selectedRowKeys = ref([] as (string | number)[])
 const pageableUsers = ref(Serde.default(PageableUsers))
