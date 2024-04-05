@@ -22,13 +22,13 @@ let checker: ts.TypeChecker
 
 export default function emitReflectMetadata(options: Options = {}) {
   const tsConfigPath = options.tsconfig ? path.resolve(options.tsconfig) : path.resolve(process.cwd(), 'tsconfig.json')
-  const config = ts.parseJsonConfigFileContent(
-    ts.readConfigFile(tsConfigPath, ts.sys.readFile).config,
-    ts.sys,
-    path.dirname(tsConfigPath)
-  )
   const createOrUpdateProgram = () => {
-    program = ts.createProgram(config.fileNames, config.options, ts.createCompilerHost(config.options), program)
+    const { fileNames, options } = ts.parseJsonConfigFileContent(
+      ts.readConfigFile(tsConfigPath, ts.sys.readFile).config,
+      ts.sys,
+      path.dirname(tsConfigPath)
+    )
+    program = ts.createProgram(fileNames, options, ts.createCompilerHost(options), program)
     checker = program.getTypeChecker()
   }
   const filter = createFilter(options.include, options.exclude)
