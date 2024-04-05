@@ -207,36 +207,33 @@ const annotate = (node: ts.Node, checker: ts.TypeChecker) => {
   )
 }
 
-const createTransformer = (program: ts.Program) => {
-  const checker = program.getTypeChecker()
+const createTransformer = (checker: ts.TypeChecker) => {
   return (context: ts.TransformationContext) => {
     // only transform the top level class declaration
     return (node: ts.SourceFile) => ts.visitEachChild(node, (node) => annotate(node, checker), context)
   }
 }
-
-const hasClassDeclaration = (ast: ts.SourceFile) =>
-  ast.statements.some((statement) => {
-    if (!ts.isClassDeclaration(statement)) return false
+const hasClassDeclaration = (ast: ts.SourceFile) => {
+  return ast.statements?.some((statement) => {
+    if (!ts.isClassDeclaration(statement)) {
+      return false
+    }
     return statement.modifiers?.some((modifier) => {
-      return ts.isDecorator(modifier) && modifier.expression.getFullText().startsWith('Model(')
+      return ts.isDecorator(modifier) && modifier.expression?.getFullText()?.startsWith('Model(')
     })
   })
-
-// cache program instance, and it will be used as the old program in next creation for performance optimization
-const PROGRAM_CACHE = new Map<string, ts.Program>()
-
-interface Config {
-  createProgram: (fileName: string, old?: ts.Program) => ts.Program
-  disableCache?: boolean
 }
 
-export default function (id: string, code: string, { createProgram, disableCache }: Config) {
-  const sourceFile = ts.createSourceFile(id, code, ts.ScriptTarget.Latest, true)
+interface Context {
+  id: string
+  program: ts.Program
+  checker: ts.TypeChecker
+}
+
+export default function ({ id, program, checker }: Context) {
+  const sourceFile = program.getSourceFile(id)
   if (!sourceFile || !hasClassDeclaration(sourceFile)) {
-    return code
+    return
   }
-  const program = createProgram(id, PROGRAM_CACHE.get(id))
-  if (!disableCache) PROGRAM_CACHE.set(id, program)
-  return printer.printFile(ts.transform(program.getSourceFile(id)!, [createTransformer(program)]).transformed[0])
+  return printer.printFile(ts.transform(sourceFile, [createTransformer(checker)]).transformed[0])
 }

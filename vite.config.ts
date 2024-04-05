@@ -18,7 +18,7 @@ import * as AntdComponents from './src/components/antd'
 export default defineConfig({
   plugins: [
     vue(),
-    emitReflectMetadata({ include: 'src/**/*.ts', disableCache: process.env.NODE_ENV !== 'development' }),
+    emitReflectMetadata({ include: 'src/**/*.ts' }),
     checker({
       overlay: { initialIsOpen: false },
       eslint: {

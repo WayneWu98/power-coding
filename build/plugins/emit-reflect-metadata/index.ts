@@ -9,15 +9,16 @@ import path from 'path'
 import ts from 'typescript'
 import { createFilter, FilterPattern } from '@rollup/pluginutils'
 import { Plugin } from 'vite'
-import MagicString from 'magic-string'
 import patch from './patch'
 
 interface Options {
   include?: FilterPattern
   exclude?: FilterPattern
   tsconfig?: string
-  disableCache?: boolean
 }
+
+let program: ts.Program
+let checker: ts.TypeChecker
 
 export default function emitReflectMetadata(options: Options = {}) {
   const tsConfigPath = options.tsconfig ? path.resolve(options.tsconfig) : path.resolve(process.cwd(), 'tsconfig.json')
@@ -26,29 +27,26 @@ export default function emitReflectMetadata(options: Options = {}) {
     ts.sys,
     path.dirname(tsConfigPath)
   )
-  const createProgram = (fileName: string, old?: ts.Program) => {
-    return ts.createProgram(
-      [fileName],
-      {
-        ...config.options,
-        module: ts.ModuleKind.ESNext,
-        sourceMap: false
-      },
-      undefined,
-      old
-    )
+  const createOrUpdateProgram = () => {
+    program = ts.createProgram(config.fileNames, config.options, ts.createCompilerHost(config.options), program)
+    checker = program.getTypeChecker()
   }
   const filter = createFilter(options.include, options.exclude)
   return {
     name: 'emit-reflect-metadata',
     enforce: 'pre',
+    buildStart() {
+      createOrUpdateProgram()
+    },
+    handleHotUpdate() {
+      createOrUpdateProgram()
+    },
     transform(code, id) {
-      const s = new MagicString(code)
       if (!filter(id)) {
-        return { code, map: s.generateMap({ hires: true }) }
+        return { code }
       }
-      const patched = new MagicString(patch(id, code, { createProgram, disableCache: options.disableCache }))
-      return { code: patched.toString(), map: patched.generateMap({ hires: true }) }
+      const patched = patch({ program, id, checker })
+      return { code: patched ?? code }
     }
   } as Plugin
 }
