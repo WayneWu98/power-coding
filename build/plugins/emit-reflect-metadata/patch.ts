@@ -144,7 +144,10 @@ const annotate = (node: ts.Node, checker: ts.TypeChecker) => {
       patchedMembers.push(member)
       continue
     }
-    if (ts.isMemberName(member.name)) {
+    const isAbstractMember = member.modifiers?.some(
+      (modifier) => ts.isModifier(modifier) && modifier.kind === ts.SyntaxKind.AbstractKeyword
+    )
+    if (!isAbstractMember && ts.isMemberName(member.name)) {
       let type = checker.getTypeAtLocation(member.name)
       if (member.questionToken && type.flags === ts.TypeFlags.Union) {
         // when type is optional, we should find the non-undefined type
@@ -233,7 +236,7 @@ interface Context {
 export default function ({ id, program, checker }: Context) {
   const sourceFile = program.getSourceFile(id)
   if (!sourceFile || !hasClassDeclaration(sourceFile)) {
-    return
+    return sourceFile.getFullText()
   }
   return printer.printFile(ts.transform(sourceFile, [createTransformer(checker)]).transformed[0])
 }

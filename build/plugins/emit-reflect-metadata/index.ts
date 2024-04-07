@@ -10,6 +10,7 @@ import ts from 'typescript'
 import { createFilter, FilterPattern } from '@rollup/pluginutils'
 import { Plugin } from 'vite'
 import patch from './patch'
+import MagicString from 'magic-string'
 
 interface Options {
   include?: FilterPattern
@@ -43,10 +44,10 @@ export default function emitReflectMetadata(options: Options = {}) {
     },
     transform(code, id) {
       if (!filter(id)) {
-        return { code }
+        return
       }
-      const patched = patch({ program, id, checker })
-      return { code: patched ?? code }
+      const patched = new MagicString(patch({ program, id, checker }))
+      return { code: patched.toString(), map: patched.generateMap({ hires: true }) }
     }
   } as Plugin
 }
